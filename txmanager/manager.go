@@ -41,6 +41,7 @@ type TransactionManager struct {
 	transferEventWatcher       *eventemitter.Watcher
 	ethTransferEventWatcher    *eventemitter.Watcher
 	orderFilledEventWatcher    *eventemitter.Watcher
+	submitRingEventWatcher 		*eventemitter.Watcher
 	forkDetectedEventWatcher   *eventemitter.Watcher
 }
 
@@ -83,6 +84,9 @@ func (tm *TransactionManager) Start() {
 	tm.orderFilledEventWatcher = &eventemitter.Watcher{Concurrent: false, Handle: tm.SaveOrderFilledEvent}
 	eventemitter.On(eventemitter.OrderFilled, tm.orderFilledEventWatcher)
 
+	tm.submitRingEventWatcher = &eventemitter.Watcher{Concurrent: false, Handle: tm.SaveSubmitRingEvent}
+	eventemitter.On(eventemitter.Miner_SubmitRing_Method, tm.submitRingEventWatcher)
+
 	tm.forkDetectedEventWatcher = &eventemitter.Watcher{Concurrent: false, Handle: tm.ForkProcess}
 	eventemitter.On(eventemitter.ChainForkDetected, tm.forkDetectedEventWatcher)
 }
@@ -97,6 +101,7 @@ func (tm *TransactionManager) Stop() {
 	eventemitter.Un(eventemitter.Transfer, tm.transferEventWatcher)
 	eventemitter.Un(eventemitter.EthTransferEvent, tm.ethTransferEventWatcher)
 	eventemitter.Un(eventemitter.OrderFilled, tm.orderFilledEventWatcher)
+	eventemitter.Un(eventemitter.Miner_SubmitRing_Method, tm.submitRingEventWatcher)
 	eventemitter.Un(eventemitter.ChainForkDetected, tm.forkDetectedEventWatcher)
 }
 
@@ -255,6 +260,10 @@ func (tm *TransactionManager) SaveOrderFilledEvent(input eventemitter.EventData)
 	list := txtyp.OrderFilledView(event)
 
 	return tm.saveTransaction(&entity, list)
+}
+
+func (tm *TransactionManager) SaveSubmitRingEvent(input eventemitter.EventData) error {
+	return nil
 }
 
 func (tm *TransactionManager) saveTransaction(tx *txtyp.TransactionEntity, list []txtyp.TransactionView) error {

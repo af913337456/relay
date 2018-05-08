@@ -98,6 +98,10 @@ type OrderFilledContent struct {
 	FillIndex string `json:"fill_index"`
 }
 
+type SubmitRingContent struct {
+
+}
+
 func (tx *TransactionEntity) FromApproveEvent(src *types.ApprovalEvent) error {
 	tx.fullFilled(src.TxInfo)
 
@@ -245,6 +249,12 @@ func (tx *TransactionEntity) FromOrderFilledEvent(src *types.OrderFilledEvent) e
 	}
 
 	tx.Content = string(bs)
+	return nil
+}
+
+func (tx *TransactionEntity) FromSubmitRingEvent(src *types.SubmitRingMethodEvent) error {
+	tx.fullFilled(src.TxInfo)
+
 	return nil
 }
 
