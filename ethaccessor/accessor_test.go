@@ -34,17 +34,14 @@ import (
 )
 
 var (
-	version              = test.Version
-	registerTokenAddress = "0xf079E0612E869197c5F4c7D0a95DF570B163232b"
-	registerTokenSymbol  = "WETH"
-	miner                = test.Entity().Creator
-	account1             = test.Entity().Accounts[0].Address
-	account2             = test.Entity().Accounts[1].Address
-	lrcTokenAddress      = util.AllTokens["LRC"].Protocol
-	wethTokenAddress     = util.AllTokens["WETH"].Protocol
-	delegateAddress      = test.Delegate()
-	gas                  = big.NewInt(200000)
-	gasPrice             = big.NewInt(21000000000)
+	miner            = test.Entity().Creator
+	account1         = test.Entity().Accounts[0].Address
+	account2         = test.Entity().Accounts[1].Address
+	lrcTokenAddress  = util.AllTokens["LRC"].Protocol
+	wethTokenAddress = util.AllTokens["WETH"].Protocol
+	delegateAddress  = test.Delegate()
+	gas              = big.NewInt(200000)
+	gasPrice         = big.NewInt(21000000000)
 )
 
 func TestEthNodeAccessor_WethDeposit(t *testing.T) {
@@ -89,7 +86,7 @@ func TestEthNodeAccessor_EthTransfer(t *testing.T) {
 	sender := account1
 	receiver := account2
 	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1))
-	if hash, err := ethaccessor.SignAndSendTransaction(sender, receiver, gas, gasPrice, amount, []byte("test")); err != nil {
+	if hash, err := ethaccessor.SignAndSendTransaction(sender, receiver, gas, gasPrice, amount, []byte("test"), false); err != nil {
 		t.Errorf(err.Error())
 	} else {
 		t.Logf("txhash:%s", hash)
@@ -352,10 +349,14 @@ func TestEthNodeAccessor_GetCutoffPair(t *testing.T) {
 func TestEthNodeAccessor_TokenRegister(t *testing.T) {
 	account := accounts.Account{Address: test.Entity().Creator.Address}
 
+	symbol := "LRC"
+	address := util.AliasToAddress(symbol)
+
 	protocol := test.Protocol()
 	tokenRegistryAddress := ethaccessor.ProtocolAddresses()[protocol].TokenRegistryAddress
+
 	callMethod := ethaccessor.ContractSendTransactionMethod("latest", ethaccessor.TokenRegistryAbi(), tokenRegistryAddress)
-	if result, err := callMethod(account.Address, "registerToken", gas, gasPrice, nil, common.HexToAddress(registerTokenAddress), registerTokenSymbol); nil != err {
+	if result, err := callMethod(account.Address, "registerToken", gas, gasPrice, nil, address, symbol); nil != err {
 		t.Fatalf("call method registerToken error:%s", err.Error())
 	} else {
 		t.Logf("registerToken result:%s", result)
@@ -365,25 +366,29 @@ func TestEthNodeAccessor_TokenRegister(t *testing.T) {
 func TestEthNodeAccessor_TokenUnRegister(t *testing.T) {
 	account := accounts.Account{Address: test.Entity().Creator.Address}
 
+	symbol := "LRC"
+	address := util.AliasToAddress(symbol)
+
 	protocol := test.Protocol()
 	tokenRegistryAddress := ethaccessor.ProtocolAddresses()[protocol].TokenRegistryAddress
+
 	callMethod := ethaccessor.ContractSendTransactionMethod("latest", ethaccessor.TokenRegistryAbi(), tokenRegistryAddress)
-	if result, err := callMethod(account.Address, "unregisterToken", gas, gasPrice, nil, common.HexToAddress(registerTokenAddress), registerTokenSymbol); nil != err {
+	if result, err := callMethod(account.Address, "unregisterToken", gas, gasPrice, nil, address, symbol); nil != err {
 		t.Fatalf("call method unregisterToken error:%s", err.Error())
 	} else {
 		t.Logf("unregisterToken result:%s", result)
 	}
 }
 
-func TestEthNodeAccessor_IsTokenRegistried(t *testing.T) {
+func TestEthNodeAccessor_IsTokenRegistered(t *testing.T) {
 	var result string
 
 	protocol := test.Protocol()
 	tokenRegistryAddress := ethaccessor.ProtocolAddresses()[protocol].TokenRegistryAddress
-	symbol := "LRC"
-	callMethod := ethaccessor.ContractCallMethod(ethaccessor.TokenRegistryAbi(), tokenRegistryAddress)
+	address := util.AliasToAddress("LRC")
 
-	if err := callMethod(&result, "isTokenRegistered", "latest", symbol); nil != err {
+	callMethod := ethaccessor.ContractCallMethod(ethaccessor.TokenRegistryAbi(), tokenRegistryAddress)
+	if err := callMethod(&result, "isTokenRegistered", "latest", address); nil != err {
 		t.Fatalf("call method isTokenRegistered error:%s", err.Error())
 	} else {
 		t.Logf("isTokenRegistered result:%s", result)
@@ -431,13 +436,17 @@ func TestEthNodeAccessor_DeAuthorizedAddress(t *testing.T) {
 
 func TestEthNodeAccessor_IsAddressAuthorized(t *testing.T) {
 	var result string
+
+	symbol := "LRC"
+
 	protocol := test.Protocol()
 	delegateAddress := ethaccessor.ProtocolAddresses()[protocol].DelegateAddress
+
 	callMethod := ethaccessor.ContractCallMethod(ethaccessor.DelegateAbi(), delegateAddress)
 	if err := callMethod(&result, "isAddressAuthorized", "latest", delegateAddress); err != nil {
 		t.Fatal(err)
 	} else {
-		t.Logf("symbol map:%s->%s", registerTokenSymbol, result)
+		t.Logf("symbol map:%s->%s", symbol, result)
 	}
 }
 

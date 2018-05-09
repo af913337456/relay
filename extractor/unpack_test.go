@@ -241,12 +241,9 @@ func TestExtractorServiceImpl_UnpackTokenRegistry(t *testing.T) {
 	input := "0x000000000000000000000000f079e0612e869197c5f4c7d0a95df570b163232b0000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000000457455448"
 
 	tokenRegistry := &ethaccessor.TokenRegisteredEvent{}
-
 	data := hexutil.MustDecode(input)
 
-	println("====token registry", len(data))
-
-	if err := ethaccessor.WethAbi().Unpack(tokenRegistry, "TokenRegistered", data, abi.SEL_UNPACK_EVENT); err != nil {
+	if err := ethaccessor.TokenRegistryAbi().Unpack(tokenRegistry, "TokenRegistered", data, abi.SEL_UNPACK_EVENT); err != nil {
 		t.Fatalf(err.Error())
 	} else {
 		t.Logf("TokenRegistered symbol:%s, address:%s", tokenRegistry.Symbol, tokenRegistry.Token.Hex())
@@ -254,15 +251,18 @@ func TestExtractorServiceImpl_UnpackTokenRegistry(t *testing.T) {
 }
 
 func TestExtractorServiceImpl_UnpackTokenUnRegistry(t *testing.T) {
-	input := "0x000000000000000000000000529540ee6862158f47d647ae023098f6705210a90000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000000457455448"
+	input := "0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000034c5243"
+
+	topics := []string{
+		"0xee98311a96660ce4ab10cd82053f767653901305ec8acf91ec60311de919e28a",
+		"0x000000000000000000000000ae79693db742d72576db8349142f9cd8b9d85355",
+	}
 
 	tokenUnRegistry := &ethaccessor.TokenUnRegisteredEvent{}
-
+	tokenUnRegistry.Token = common.HexToAddress(topics[1])
 	data := hexutil.MustDecode(input)
 
-	println("====token unregistry", len(data))
-
-	if err := ethaccessor.WethAbi().Unpack(tokenUnRegistry, "TokenUnregistered", data, abi.SEL_UNPACK_EVENT); err != nil {
+	if err := ethaccessor.TokenRegistryAbi().Unpack(tokenUnRegistry, "TokenUnregistered", data, abi.SEL_UNPACK_EVENT); err != nil {
 		t.Fatalf(err.Error())
 	} else {
 		t.Logf("TokenUnregistered symbol:%s, address:%s", tokenUnRegistry.Symbol, tokenUnRegistry.Token.Hex())
