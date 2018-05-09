@@ -269,18 +269,6 @@ func TestExtractorServiceImpl_UnpackTokenUnRegistry(t *testing.T) {
 	}
 }
 
-func TestExtractorServiceImpl_Compare(t *testing.T) {
-	str1 := "547722557505166136913"
-	str2 := "1000000000000000000000"
-	num1, _ := big.NewInt(0).SetString(str1, 0)
-	num2, _ := big.NewInt(0).SetString(str2, 0)
-	if num1.Cmp(num2) > 0 {
-		t.Logf("%s > %s", str1, str2)
-	} else {
-		t.Logf("%s <= %s", str1, str2)
-	}
-}
-
 func TestExtractorServiceImpl_UnpackNumbers(t *testing.T) {
 	str1 := "0xffffffffffffffffffffffffffffffffffffffffffffffffffa1d2c1fb1c2d9f"
 	str2 := "0xffffffffffffffffffffffffffffffffffffffffffffffffff90c5f64e557fa4"
