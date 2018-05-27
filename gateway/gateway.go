@@ -52,7 +52,9 @@ type Filter interface {
 	filter(o *types.Order) (bool, error)
 }
 
-func Initialize(filterOptions *config.GatewayFiltersOptions, options *config.GateWayOptions, ipfsOptions *config.IpfsOptions, om ordermanager.OrderManager, marketCap marketcap.MarketCapProvider, am market.AccountManager) {
+func Initialize(filterOptions *config.GatewayFiltersOptions,
+	options *config.GateWayOptions, ipfsOptions *config.IpfsOptions,
+		om ordermanager.OrderManager, marketCap marketcap.MarketCapProvider, am market.AccountManager) {
 	// add gateway watcher
 	gatewayWatcher := &eventemitter.Watcher{Concurrent: false, Handle: HandleOrder}
 	eventemitter.On(eventemitter.GatewayNewOrder, gatewayWatcher)

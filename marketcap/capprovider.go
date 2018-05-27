@@ -278,7 +278,7 @@ func (p *CapProvider_CoinMarketCap) Start() {
 
 func (p *CapProvider_CoinMarketCap) syncMarketCap() error {
 	url := fmt.Sprintf(p.baseUrl, p.currency)
-	resp, err := http.Get(url)
+	resp, err := http.Get(url) // lgh: 进行第三方货币数据接口请求，下面再解析然后初始化好所有的货币信息，含价格等信息
 	if err != nil {
 		return err
 	}
@@ -333,6 +333,7 @@ func NewMarketCapProvider(options config.MarketCapOptions) *CapProvider_CoinMark
 	}
 	for _, v := range util.AllTokens {
 		if "ARP" == v.Symbol || "VITE" == v.Symbol {
+			// lgh:下面都是初始化部分代币信息，是不完整的，要等待网络同步
 			c := &types.CurrencyMarketCap{}
 			c.Address = v.Protocol
 			c.Id = v.Source
@@ -352,6 +353,7 @@ func NewMarketCapProvider(options config.MarketCapOptions) *CapProvider_CoinMark
 		}
 	}
 
+	// lgh: 这里进入货币价格，市值等数据的获取，会覆盖更新 之前从文件中的部分代币市值信息
 	if err := provider.syncMarketCap(); nil != err {
 		log.Fatalf("can't sync marketcap with error:%s", err.Error())
 	}

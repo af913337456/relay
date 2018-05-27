@@ -108,6 +108,7 @@ func LeftPadBytes(slice []byte, l int) []byte {
 	}
 
 	padded := make([]byte, l)
+	// 10 - 8 = 2  paded[2:]
 	copy(padded[l-len(slice):], slice)
 
 	return padded

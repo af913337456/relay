@@ -192,6 +192,7 @@ func Initialize(options config.MarketOptions) {
 	AllTokens = make(map[string]types.Token)
 	SymbolTokenMap = make(map[common.Address]string)
 
+	// lgh: 设置从 json 文件导入代币信息，和市场
 	SupportTokens, SupportMarkets, AllTokens, AllMarkets, AllTokenPairs, SymbolTokenMap = getTokenAndMarketFromDB(options.TokenFile)
 
 	// StartRefreshCron(rds)

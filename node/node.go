@@ -53,7 +53,7 @@ type Node struct {
 	ipfsSubService    gateway.IPFSSubService
 	orderManager      ordermanager.OrderManager
 	userManager       usermanager.UserManager
-	marketCapProvider marketcap.MarketCapProvider
+	marketCapProvider marketcap.MarketCapProvider // 市值
 	accountManager    market.AccountManager
 	relayNode         *RelayNode
 	mineNode          *MineNode
@@ -111,8 +111,8 @@ func NewNode(logger *zap.Logger, globalConfig *config.GlobalConfig) *Node {
 	n.registerMysql()
 	cache.NewCache(n.globalConfig.Redis)
 
-	util.Initialize(n.globalConfig.Market)
-	n.registerMarketCap()
+	util.Initialize(n.globalConfig.Market) // lgh:
+	n.registerMarketCap() // lgh: 初始化货币市值信息，去网络同步
 	n.registerAccessor()
 	n.registerUserManager()
 	n.registerOrderManager()
