@@ -108,15 +108,18 @@ func NewNode(logger *zap.Logger, globalConfig *config.GlobalConfig) *Node {
 	n.globalConfig = globalConfig
 
 	// register
-	n.registerMysql()
-	cache.NewCache(n.globalConfig.Redis)
+	n.registerMysql() // lgh:初始化数据库引擎句柄和创建对应的表格，使用了 gorm 框架
+	cache.NewCache(n.globalConfig.Redis) // lgh:初始化Redis,内存存储三方框架
 
-	util.Initialize(n.globalConfig.Market) // lgh:
+	util.Initialize(n.globalConfig.Market) // lgh:设置从 json 文件导入代币信息，和市场
 	n.registerMarketCap() // lgh: 初始化货币市值信息，去网络同步
-	n.registerAccessor()
-	n.registerUserManager()
-	n.registerOrderManager()
-	n.registerAccountManager()
+
+	n.registerAccessor()  // lgh: 初始化指定合约的ABI和通过json-rpc请求eth_call去以太坊获取它们的地址，以及启动了定时任务同步本地区块数目，仅数目
+
+	n.registerUserManager() // lgh: 初始化用户白名单相关操作，内存缓存部分基于 go-cache 库，以及启动了定时任务更新白名单列表
+
+	n.registerOrderManager() // lgh: 初始化订单相关配置，含内存缓存-redis，以及系列的订单事件监听者，如cancel,submit,newOrder 等
+	n.registerAccountManager() // lgh: 初始化账号管理实例的一些简单参数。内部主要是和订单管理者一样，拥有用户交易动作事件监听者，例如转账，确认等
 	n.registerGateway()
 	n.registerCrypto(nil)
 
@@ -277,3 +280,23 @@ func (n *Node) registerUserManager() {
 func (n *Node) registerMarketCap() {
 	n.marketCapProvider = marketcap.NewMarketCapProvider(n.globalConfig.MarketCap)
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

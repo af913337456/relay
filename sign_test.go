@@ -4,6 +4,9 @@ import (
 	"crypto/ecdsa"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"testing"
+	"time"
+	"fmt"
 )
 
 /**
@@ -100,3 +103,41 @@ func boolToByte(b bool) byte {
 //	}
 //}
 //
+
+func TestWait(t *testing.T) {
+	go func() {
+		for {
+			select {
+			case <-time.After(time.Duration(3 * time.Second)):
+				fmt.Println("456")
+			}
+		}
+	}()
+	time.Sleep(time.Minute*9)
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

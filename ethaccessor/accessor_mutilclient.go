@@ -71,6 +71,7 @@ func NewMutilClient(urls []string) *MutilClient {
 func (mc *MutilClient) newRpcClient(url string) {
 	rpcClient := &RpcClient{}
 	rpcClient.url = url
+	// lgh: 启动rpc客户端，访问的将会是本地8545端口，配置文件的是和geth一样的默认端口
 	if client, err := rpc.DialHTTP(url); nil != err {
 		log.Errorf("rpc.Dail err : %s, url:%s", err.Error(), url)
 		mc.downedClients[url] = rpcClient
@@ -143,6 +144,8 @@ func (mc *MutilClient) bestClient(routeParam string) *RpcClient {
 }
 
 func (mc *MutilClient) syncBlockNumber() {
+	// lgh: 在本份源码中，url 对应的在配置文件中只有一个 raw_urls = ["http://127.0.0.1:8545"]
+	// lgh: 意味着 len(mc.clients) == 1，所以下面的 eth_blockNumber 是获取本地总的区块数区块数，包含同步过来的
 	for _, client := range mc.clients {
 		var blockNumber types.Big
 		if err := client.client.Call(&blockNumber, "eth_blockNumber"); nil != err {

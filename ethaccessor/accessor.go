@@ -271,11 +271,9 @@ func Initialize(accessorOptions config.AccessorOptions, commonOptions config.Com
 	if nil != err {
 		return err
 	}
-
-	if accessor.Erc20Abi, err = NewAbi(commonOptions.Erc20Abi); nil != err {
+	if accessor.Erc20Abi,err = NewAbi(commonOptions.Erc20Abi); nil != err {
 		return err
 	}
-
 	if accessor.WethAbi, err = NewAbi(commonOptions.WethAbi); nil != err {
 		return err
 	}
@@ -308,6 +306,7 @@ func Initialize(accessorOptions config.AccessorOptions, commonOptions config.Com
 	//	accessor.NameRegistryAbi = nameRegistryAbi
 	//}
 
+	// lgh: 进行rpc请求，验证这些合约的有效性的同时获取它们的地址，因为上面初始化好了一些ABI，一个合约实例还差地址
 	for version, address := range commonOptions.ProtocolImpl.Address {
 		impl := &ProtocolAddress{Version: version, ContractAddress: common.HexToAddress(address)}
 		callMethod := accessor.ContractCallMethod(accessor.ProtocolImplAbi, impl.ContractAddress)
@@ -339,7 +338,7 @@ func Initialize(accessorOptions config.AccessorOptions, commonOptions config.Com
 		accessor.ProtocolAddresses[impl.ContractAddress] = impl
 		accessor.DelegateAddresses[impl.DelegateAddress] = true
 	}
-
+	// lgh: 开始同步区块的数目，内部是获取了区块数
 	accessor.MutilClient.startSyncBlockNumber()
 	return nil
 }
