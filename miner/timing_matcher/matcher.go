@@ -135,10 +135,10 @@ func (matcher *TimingMatcher) cleanMissedCache() {
 }
 
 func (matcher *TimingMatcher) Start() {
-	matcher.listenSubmitEvent()
-	matcher.listenOrderReady()
-	matcher.listenTimingRound()
-	matcher.cleanMissedCache()
+	matcher.listenSubmitEvent() // lgh: 注册且监听 Miner_RingSubmitResult 事件，提交成功或失败或unknown 后，都从内存缓存中删除该环
+	matcher.listenOrderReady() // lgh: 定时器，每隔十秒，进行以太坊，即Geth同步的区块数和 relay 本地数据库fork是false的区块数进行对比，来控制匹配这 matcher 是否准备好，能够进行匹配
+	matcher.listenTimingRound() // lgh: 开始定时进行环的撮合，受上面的 orderReady 影响
+	matcher.cleanMissedCache() // lgh: 清除上一次程序退出前的错误内存缓存
 
 	//syncWatcher := &eventemitter.Watcher{Concurrent: false, Handle: func(eventData eventemitter.EventData) error {
 	//	log.Debugf("TimingMatcher Start......")

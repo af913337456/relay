@@ -120,8 +120,8 @@ func NewNode(logger *zap.Logger, globalConfig *config.GlobalConfig) *Node {
 
 	n.registerOrderManager() // lgh: 初始化订单相关配置，含内存缓存-redis，以及系列的订单事件监听者，如cancel,submit,newOrder 等
 	n.registerAccountManager() // lgh: 初始化账号管理实例的一些简单参数。内部主要是和订单管理者一样，拥有用户交易动作事件监听者，例如转账，确认等
-	n.registerGateway()
-	n.registerCrypto(nil)
+	n.registerGateway()  // lgh:初始化了系列的过滤规则，包含订单请求规则等。以及 GatewayNewOrder 新订单事件的订阅
+	n.registerCrypto(nil) // lgh: 初始化加密器，目前主要是Keccak-256
 
 	if "relay" == globalConfig.Mode {
 		n.registerRelayNode()
@@ -138,12 +138,12 @@ func NewNode(logger *zap.Logger, globalConfig *config.GlobalConfig) *Node {
 func (n *Node) registerRelayNode() {
 	n.relayNode = &RelayNode{}
 	n.registerExtractor()
-	n.registerTransactionManager()
-	n.registerTrendManager()
-	n.registerTickerCollector()
-	n.registerWalletService()
-	n.registerJsonRpcService()
-	n.registerWebsocketService()
+	n.registerTransactionManager() // lgh:事务管理器
+	n.registerTrendManager()   // lgh: 趋势数据管理器，市场变化趋势信息
+	n.registerTickerCollector() // lgh: 负责统计24小时市场变化统计数据。目前支持的平台有OKEX，币安
+	n.registerWalletService() // lgh: 初始化钱包服务实例
+	n.registerJsonRpcService()// lgh: 初始化 json-rpc 端口和绑定钱包WalletServiceHandler，start 的时候启动服务
+	n.registerWebsocketService() // lgh: 初始化 webSocket
 	n.registerSocketIOService()
 	txmanager.NewTxView(n.rdsService)
 }

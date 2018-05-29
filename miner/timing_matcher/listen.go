@@ -84,6 +84,7 @@ func (matcher *TimingMatcher) listenOrderReady() {
 		var ethBlockNumber types.Big
 		if err = ethaccessor.BlockNumber(&ethBlockNumber); nil == err {
 			var block *dao.Block
+			// err := s.db.Order("create_time desc").Where("fork = ?", false).First(&block).Error
 			if block, err = matcher.db.FindLatestBlock(); nil == err {
 				log.Debugf("listenOrderReadylistenOrderReadylistenOrderReady, %t, %d, %d", matcher.isOrdersReady, block.BlockNumber, ethBlockNumber.Int64())
 				if ethBlockNumber.Int64() > (block.BlockNumber + matcher.lagBlocks) {
@@ -165,7 +166,9 @@ func (matcher *TimingMatcher) listenSubmitEvent() {
 		for {
 			select {
 			case minedEvent := <-submitEventChan:
-				if minedEvent.Status == types.TX_STATUS_FAILED || minedEvent.Status == types.TX_STATUS_SUCCESS || minedEvent.Status == types.TX_STATUS_UNKNOWN {
+				if minedEvent.Status == types.TX_STATUS_FAILED ||
+					minedEvent.Status == types.TX_STATUS_SUCCESS ||
+						minedEvent.Status == types.TX_STATUS_UNKNOWN {
 					log.Debugf("received mined event, this round the related cache will be removed, ringhash:%s, status:%d", minedEvent.RingHash.Hex(), uint8(minedEvent.Status))
 					//matcher.rounds.RemoveMinedRing(minedEvent.RingHash)
 					if orderhashes, err := RemoveMinedRingAndReturnOrderhashes(minedEvent.RingHash); nil != err {
