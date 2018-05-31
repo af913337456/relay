@@ -79,11 +79,12 @@ func (market *Market) match() {
 		}
 	}
 
-	log.Debugf("match round:%s, market: %s -> %s , candidateRingList.length:%d", market.matcher.lastRoundNumber, market.TokenA.Hex(), market.TokenB.Hex(), len(candidateRingList))
+	log.Debugf("match round:%s, market: A %s -> B %s , candidateRingList.length:%d", market.matcher.lastRoundNumber, market.TokenA.Hex(), market.TokenB.Hex(), len(candidateRingList))
 	//the ring that can get max received
 	list := candidateRingList
 	for {
 		if len(list) <= 0 {
+			log.Debugf("match round ===> len(list) <= 0")
 			break
 		}
 
@@ -148,7 +149,10 @@ func (market *Market) match() {
 		}
 	}
 	if len(ringSubmitInfos) > 0 {
+		log.Debugf("形成新环 : TokenA %s -> TokenB %s，分发 Miner_NewRing 事件",market.TokenA.Hex(), market.TokenB.Hex())
 		eventemitter.Emit(eventemitter.Miner_NewRing, ringSubmitInfos)
+	}else{
+		log.Debugf("不足以形成新环 len(ringSubmitInfos) <= 0")
 	}
 }
 

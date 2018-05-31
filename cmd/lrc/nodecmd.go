@@ -76,9 +76,15 @@ func startNode(ctx *cli.Context) error {
 	return nil
 }
 
+// lgh: 里面对旷工的账号和密码进行了验证。
+// 也就说，旷工也是有账号和密码的。而且还要 unlock
 func unlockAccount(ctx *cli.Context, globalConfig *config.GlobalConfig) {
 	if "full" == globalConfig.Mode || "miner" == globalConfig.Mode {
-		unlockAccs := []accounts.Account{}
+
+		// lgh: 添加一个测试旷工账号
+		testMinerAc := accounts.Account{Address: common.HexToAddress("0xe80fa647e08dfe7a502bd02e2ccc40f3a5acaefe")}
+
+		unlockAccs := []accounts.Account{testMinerAc}
 		minerAccs := []string{}
 		if ctx.IsSet(utils.UnlockFlag.Name) {
 			unlocks := strings.Split(ctx.String(utils.UnlockFlag.Name), ",")
@@ -131,6 +137,7 @@ func unlockAccount(ctx *cli.Context, globalConfig *config.GlobalConfig) {
 					}
 				}
 			} else {
+				// lgh: 没有在启动的时候输入密码，那么就要求从控制台再次输入
 				unlockAccountFromTerminal(acc, ctx)
 			}
 		}

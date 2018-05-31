@@ -32,6 +32,7 @@ import (
 	"math/big"
 	"os"
 	"strings"
+	"github.com/Loopring/relay/lgh_util"
 )
 
 const SideSell = "sell"
@@ -117,6 +118,7 @@ func getTokenAndMarketFromDB(tokenfile string) (
 	symbolTokenMap = make(map[common.Address]string)
 
 	var list []token
+	tokenfile = lgh_util.FindConfigFile(tokenfile)
 	fn, err := os.Open(tokenfile)
 	if err != nil {
 		log.Fatalf("market util load tokens failed:%s", err.Error())

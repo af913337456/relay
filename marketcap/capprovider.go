@@ -265,7 +265,8 @@ func (p *CapProvider_CoinMarketCap) Start() {
 			case <-time.After(time.Duration(p.duration) * time.Minute):
 				log.Infof("marketCap sycing...")
 				if err := p.syncMarketCap(); nil != err {
-					log.Errorf("can't sync marketcap, time:%d", time.Now().Unix())
+					fmt.Println("syncMarketCap error =====> "+err.Error())
+					log.Errorf("can't sync marketcap, time:%d,%s", time.Now().Unix(),err.Error())
 				}
 			case stopped := <-p.stopChan:
 				if stopped {
@@ -310,10 +311,19 @@ func (p *CapProvider_CoinMarketCap) syncMarketCap() error {
 				}
 			}
 			for _, tokenCap := range p.tokenMarketCaps {
-				if _, exists := syncedTokens[tokenCap.Address]; !exists && "VITE" != tokenCap.Symbol && "ARP" != tokenCap.Symbol {
-					//todo:
-					log.Errorf("token:%s, id:%s, can't sync marketcap at time:%d, it't last updated time:%d", tokenCap.Symbol, tokenCap.Id, time.Now().Unix(), tokenCap.LastUpdated)
+				if !syncedTokens[tokenCap.Address] { // 代币符号不存在
+					if "VITE" != tokenCap.Symbol {
+						if "ARP" != tokenCap.Symbol {
+							//todo:
+							log.Errorf("token:%s, id:%s, can't sync marketcap at time:%d, it't last updated time:%d",
+								tokenCap.Symbol, tokenCap.Id, time.Now().Unix(), tokenCap.LastUpdated)
+						}
+					}
 				}
+				//if _, exists := syncedTokens[tokenCap.Address]; !exists && "VITE" != tokenCap.Symbol && "ARP" != tokenCap.Symbol {
+				//
+				//
+				//}
 			}
 		}
 	}

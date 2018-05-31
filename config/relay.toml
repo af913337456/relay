@@ -23,7 +23,7 @@ name = "Loopring corporation"
     hostname = "127.0.0.1"
     port = "3306"
     user = "root"
-    password = "111111"
+    password = "123aaa"
     db_name = "miner_v3"
     table_prefix = "lpr_"
     max_open_connections = 0
@@ -90,9 +90,9 @@ name = "Loopring corporation"
     walletSplit = 0.8
     minGasLimit = 1000000000
     maxGasLimit = 100000000000
-    feeReceipt = "0x750aD4351bB728ceC7d639A9511F9D6488f1E259"
+    feeReceipt = "0xe80fa647e08dfe7a502bd02e2ccc40f3a5acaefe"
     [[miner.normal_miners]]
-        address = "0x750aD4351bB728ceC7d639A9511F9D6488f1E259"
+        address = "0xe80fa647e08dfe7a502bd02e2ccc40f3a5acaefe"
         maxPendingTtl = 40
         maxPendingCount = 20
         gasPriceLimit = 10000000000
@@ -106,7 +106,7 @@ name = "Loopring corporation"
     		max_sumit_failed_count = 3
 
 [market]
-    token_file = "/Users/yuhongyu/Desktop/service/go/src/github.com/Loopring/relay/config/tokens.json"
+    token_file = "tokens.json"
     old_version_weth_address = "0x88699e7fee2da0462981a08a15a3b940304cc516"
     cron_job_lock = true
 
@@ -132,7 +132,7 @@ name = "Loopring corporation"
 
 
 [keystore]
-    keydir = "/Users/yuhongyu/Desktop/service/go/src/github.com/Loopring/relay/ks_dir"
+    keydir = "/home/who/.ethereum/keystore"
 
 
 [user_manager]
