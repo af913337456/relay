@@ -165,6 +165,7 @@ func (e *Evaluator) ComputeRing(ringState *types.Ring) error {
 	}
 
 	//compute the fee of this ring and orders, and set the feeSelection
+	// lgh: 这里面的函数内部进行了油费的赋值
 	if err := e.computeFeeOfRingAndOrder(ringState); nil != err {
 		return err
 	}
@@ -388,13 +389,17 @@ func (e *Evaluator) evaluateReceived(ringState *types.Ring) {
 	return
 }
 
+// lgh: 计算费用的实例
 func NewEvaluator(marketCapProvider marketcap.MarketCapProvider, minerOptions config.MinerOptions) *Evaluator {
 	gasUsedMap := make(map[int]*big.Int)
 	gasUsedMap[2] = big.NewInt(500000)
 	//todo:confirm this value
 	gasUsedMap[3] = big.NewInt(500000)
 	gasUsedMap[4] = big.NewInt(500000)
-	e := &Evaluator{marketCapProvider: marketCapProvider, rateRatioCVSThreshold: minerOptions.RateRatioCVSThreshold, gasUsedWithLength: gasUsedMap}
+	e := &Evaluator{
+		marketCapProvider: marketCapProvider,
+		rateRatioCVSThreshold: minerOptions.RateRatioCVSThreshold,
+		gasUsedWithLength: gasUsedMap}
 	e.realCostRate = new(big.Rat)
 	if int64(minerOptions.Subsidy) >= 1 {
 		e.realCostRate.SetInt64(int64(0))

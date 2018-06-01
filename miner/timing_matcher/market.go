@@ -55,7 +55,6 @@ func (market *Market) match() {
 	for _, a2BOrder := range market.AtoBOrders {
 		if failedCount, err1 := OrderExecuteFailedCount(a2BOrder.RawOrder.Hash); nil == err1 && failedCount > market.matcher.maxFailedCount {
 			log.Debugf("orderhash:%s has been failed to submit %d times", a2BOrder.RawOrder.Hash.Hex(), failedCount)
-
 			continue
 		}
 		for _, b2AOrder := range market.BtoAOrders {
@@ -92,7 +91,7 @@ func (market *Market) match() {
 		candidateRing := list[0]
 		list = list[1:]
 		orders := []*types.OrderState{}
-		for hash, _ := range candidateRing.filledOrders {
+		for hash,_ := range candidateRing.filledOrders {
 			if o, exists := market.AtoBOrders[hash]; exists {
 				orders = append(orders, o)
 			} else {

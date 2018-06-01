@@ -150,6 +150,7 @@ func (n *Node) registerRelayNode() {
 
 func (n *Node) registerMineNode() {
 	n.mineNode = &MineNode{}
+	// lgh: NewKeyStore 用来导入矿工的 keyStore 文件
 	ks := keystore.NewKeyStore(n.globalConfig.Keystore.Keydir, keystore.StandardScryptN, keystore.StandardScryptP)
 	n.registerCrypto(ks)
 	n.registerMiner()
@@ -259,6 +260,7 @@ func (n *Node) registerSocketIOService() {
 
 func (n *Node) registerMiner() {
 	//ethaccessor.IncludeGasPriceEvaluator()
+	// lgh: 初始化环提交者
 	submitter, err := miner.NewSubmitter(n.globalConfig.Miner, n.rdsService, n.marketCapProvider)
 	if nil != err {
 		log.Fatalf("failed to init submitter, error:%s", err.Error())

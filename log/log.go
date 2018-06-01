@@ -52,6 +52,9 @@ func Debugf(template string, args ...interface{}) {
 }
 
 func Infof(template string, args ...interface{}) {
+	if sugaredLogger == nil {
+		return
+	}
 	sugaredLogger.Infof(template, args...)
 }
 

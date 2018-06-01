@@ -1,0 +1,172 @@
+
+
+
+
+===**SupportTokens**===
+RHOC
+{"protocol":"0x168296bb09e24a88805cb9c33356536b980d3fc5","symbol":"RHOC","source":"rchain","time":0,"deny":false,"decimals":100000000,"isMarket":false,"icoPrice":null}
+=====
+ZRX
+{"protocol":"0xe41d2489571d322189246dafa5ebde1f4699f498","symbol":"ZRX","source":"0x","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":false,"icoPrice":null}
+=====
+DAI
+{"protocol":"0x89d24a6b4ccb1b6faa2625fe562bdd9a23260359","symbol":"DAI","source":"dai","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":false,"icoPrice":null}
+=====
+KNC
+{"protocol":"0xdd974d5c2e2928dea5f71b9825b8b646686bd200","symbol":"KNC","source":"kyber-network","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":false,"icoPrice":null}
+=====
+BNT
+{"protocol":"0x1f573d6fb3f13d689ff844b4ce37794d79a7ff1c","symbol":"BNT","source":"bancor","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":false,"icoPrice":null}
+=====
+ARP
+{"protocol":"0xbeb6fdf4ef6ceb975157be43cbe0047b248a8922","symbol":"ARP","source":"","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":false,"icoPrice":"1/8000"}
+=====
+OMG
+{"protocol":"0xd26114cd6ee289accf82350c8d8487fedb8a0c07","symbol":"OMG","source":"omisego","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":false,"icoPrice":null}
+=====
+SNT
+{"protocol":"0x744d70fdbe2ba4cf95131626614a1763df805b9e","symbol":"SNT","source":"status","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":false,"icoPrice":null}
+=====
+BAT
+{"protocol":"0x0d8775f648430679a709e98d2b0cb6250d2887ef","symbol":"BAT","source":"batcoin","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":false,"icoPrice":null}
+=====
+REQ
+{"protocol":"0x8f8221afbb33998d8584a2b05749ba73c37a938a","symbol":"REQ","source":"request-network","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":false,"icoPrice":null}
+=====
+FOO
+{"protocol":"0xf5b3b365fa319342e89a3da71ba393e12d9f63c3","symbol":"FOO","source":"storm","time":0,"deny":false,"decimals":100000000,"isMarket":false,"icoPrice":null}
+=====
+EOS
+{"protocol":"0x86fa049857e0209aa7d9e616f7eb3b3b78ecfdb0","symbol":"EOS","source":"eos","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":false,"icoPrice":null}
+=====
+IOST
+{"protocol":"0xfa1a856cfa3409cfa145fa4e20eb270df3eb21ab","symbol":"IOST","source":"iostoken","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":false,"icoPrice":null}
+=====
+VITE
+{"protocol":"0x1b793e49237758dbd8b752afc9eb4b329d5da016","symbol":"VITE","source":"","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":false,"icoPrice":"1/9000"}
+=====
+RDN
+{"protocol":"0x255aa6df07540cb5d3d297f0d0d4d84cb52bc8e6","symbol":"RDN","source":"raiden-network-token","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":false,"icoPrice":null}
+=====
+===**SupportMarkets**===
+WETH
+{"protocol":"0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2","symbol":"WETH","source":"ethereum","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":true,"icoPrice":null}
+=====
+BAR
+{"protocol":"0xb5f64747127be058ee7239b363269fc8cf3f4a87","symbol":"BAR","source":"wax","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":true,"icoPrice":null}
+=====
+LRC
+{"protocol":"0xef68e7c694f40c8202821edf525de3782458639f","symbol":"LRC","source":"loopring","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":true,"icoPrice":null}
+=====
+===**AllTokens**===
+WETH
+{"protocol":"0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2","symbol":"WETH","source":"ethereum","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":true,"icoPrice":null}
+=====
+SNT
+{"protocol":"0x744d70fdbe2ba4cf95131626614a1763df805b9e","symbol":"SNT","source":"status","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":false,"icoPrice":null}
+=====
+IOST
+{"protocol":"0xfa1a856cfa3409cfa145fa4e20eb270df3eb21ab","symbol":"IOST","source":"iostoken","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":false,"icoPrice":null}
+=====
+RDN
+{"protocol":"0x255aa6df07540cb5d3d297f0d0d4d84cb52bc8e6","symbol":"RDN","source":"raiden-network-token","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":false,"icoPrice":null}
+=====
+LRC
+{"protocol":"0xef68e7c694f40c8202821edf525de3782458639f","symbol":"LRC","source":"loopring","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":true,"icoPrice":null}
+=====
+DAI
+{"protocol":"0x89d24a6b4ccb1b6faa2625fe562bdd9a23260359","symbol":"DAI","source":"dai","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":false,"icoPrice":null}
+=====
+KNC
+{"protocol":"0xdd974d5c2e2928dea5f71b9825b8b646686bd200","symbol":"KNC","source":"kyber-network","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":false,"icoPrice":null}
+=====
+FOO
+{"protocol":"0xf5b3b365fa319342e89a3da71ba393e12d9f63c3","symbol":"FOO","source":"storm","time":0,"deny":false,"decimals":100000000,"isMarket":false,"icoPrice":null}
+=====
+EOS
+{"protocol":"0x86fa049857e0209aa7d9e616f7eb3b3b78ecfdb0","symbol":"EOS","source":"eos","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":false,"icoPrice":null}
+=====
+RHOC
+{"protocol":"0x168296bb09e24a88805cb9c33356536b980d3fc5","symbol":"RHOC","source":"rchain","time":0,"deny":false,"decimals":100000000,"isMarket":false,"icoPrice":null}
+=====
+VITE
+{"protocol":"0x1b793e49237758dbd8b752afc9eb4b329d5da016","symbol":"VITE","source":"","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":false,"icoPrice":"1/9000"}
+=====
+ZRX
+{"protocol":"0xe41d2489571d322189246dafa5ebde1f4699f498","symbol":"ZRX","source":"0x","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":false,"icoPrice":null}
+=====
+BNT
+{"protocol":"0x1f573d6fb3f13d689ff844b4ce37794d79a7ff1c","symbol":"BNT","source":"bancor","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":false,"icoPrice":null}
+=====
+ARP
+{"protocol":"0xbeb6fdf4ef6ceb975157be43cbe0047b248a8922","symbol":"ARP","source":"","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":false,"icoPrice":"1/8000"}
+=====
+OMG
+{"protocol":"0xd26114cd6ee289accf82350c8d8487fedb8a0c07","symbol":"OMG","source":"omisego","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":false,"icoPrice":null}
+=====
+BAT
+{"protocol":"0x0d8775f648430679a709e98d2b0cb6250d2887ef","symbol":"BAT","source":"batcoin","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":false,"icoPrice":null}
+=====
+REQ
+{"protocol":"0x8f8221afbb33998d8584a2b05749ba73c37a938a","symbol":"REQ","source":"request-network","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":false,"icoPrice":null}
+=====
+BAR
+{"protocol":"0xb5f64747127be058ee7239b363269fc8cf3f4a87","symbol":"BAR","source":"wax","time":0,"deny":false,"decimals":1000000000000000000,"isMarket":true,"icoPrice":null}
+=====
+===**SymbolTokenMap**===
+[134 250 4 152 87 224 32 154 167 217 230 22 247 235 59 59 120 236 253 176]
+EOS
+=====
+[221 151 77 92 46 41 40 222 165 247 27 152 37 184 182 70 104 107 210 0]
+KNC
+=====
+[13 135 117 246 72 67 6 121 167 9 233 141 43 12 182 37 13 40 135 239]
+BAT
+=====
+[250 26 133 108 250 52 9 207 161 69 250 78 32 235 39 13 243 235 33 171]
+IOST
+=====
+[228 29 36 137 87 29 50 33 137 36 109 175 165 235 222 31 70 153 244 152]
+ZRX
+=====
+[239 104 231 198 148 244 12 130 2 130 30 223 82 93 227 120 36 88 99 159]
+LRC
+=====
+[210 97 20 205 110 226 137 172 207 130 53 12 141 132 135 254 219 138 12 7]
+OMG
+=====
+[143 130 33 175 187 51 153 141 133 132 162 176 87 73 186 115 195 122 147 138]
+REQ
+=====
+[137 210 74 107 76 203 27 111 170 38 37 254 86 43 221 154 35 38 3 89]
+DAI
+=====
+[192 42 170 57 178 35 254 141 10 14 92 79 39 234 217 8 60 117 108 194]
+WETH
+=====
+[245 179 179 101 250 49 147 66 232 154 61 167 27 163 147 225 45 159 99 195]
+FOO
+=====
+[27 121 62 73 35 119 88 219 216 183 82 175 201 235 75 50 157 93 160 22]
+VITE
+=====
+[116 77 112 253 190 43 164 207 149 19 22 38 97 74 23 99 223 128 91 158]
+SNT
+=====
+[37 90 166 223 7 84 12 181 211 210 151 240 208 212 216 76 181 43 200 230]
+RDN
+=====
+[22 130 150 187 9 226 74 136 128 92 185 195 51 86 83 107 152 13 63 197]
+RHOC
+=====
+[181 246 71 71 18 123 224 88 238 114 57 179 99 38 159 200 207 63 74 135]
+BAR
+=====
+[31 87 61 111 179 241 61 104 159 248 68 180 206 55 121 77 121 167 255 28]
+BNT
+=====
+[190 182 253 244 239 108 235 151 81 87 190 67 203 224 4 123 36 138 137 34]
+ARP
+=====
+
+Process finished with exit code 0

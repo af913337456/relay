@@ -154,8 +154,98 @@ func getTokenAndMarketFromDB(tokenfile string) (
 	}
 
 	// set all markets
+	// lgh: k == Symbol, kk == Symbol
 	for k := range allTokens { // lrc,omg
 		for kk := range supportMarkets { //eth
+			// map[string]uint8{"BAR": 5, "LRC": 10, "WETH": 20, "DAI": 30}
+			o, ok := MarketBaseOrder[k]
+			if ok {
+				baseOrder := MarketBaseOrder[kk]
+				if o < baseOrder {
+					allMarkets = append(allMarkets, k+"-"+kk)
+				}
+			} else {
+				allMarkets = append(allMarkets, k+"-"+kk)
+			}
+			log.Infof("market util,supported market:%s", k+"-"+kk)
+		}
+	}
+
+	// set all token pairs
+	pairsMap := make(map[string]TokenPair, 0)
+	for _, v := range supportMarkets {
+		for _, vv := range allTokens {
+			if v.Symbol != vv.Symbol {
+				pairsMap[v.Symbol+"-"+vv.Symbol] = TokenPair{v.Protocol, vv.Protocol}
+				pairsMap[vv.Symbol+"-"+v.Symbol] = TokenPair{vv.Protocol, v.Protocol}
+			}
+		}
+	}
+
+	for _, v := range pairsMap {
+		allTokenPairs = append(allTokenPairs, v)
+	}
+
+	return
+}
+
+func GetTokenAndMarketFromDB_test(tokenfile string) (
+	supportTokens map[string]types.Token,
+	supportMarkets map[string]types.Token,
+	allTokens map[string]types.Token,
+	allMarkets []string,
+	allTokenPairs []TokenPair,
+	symbolTokenMap map[common.Address]string) {
+
+	supportTokens = make(map[string]types.Token)
+	allTokens = make(map[string]types.Token)
+	supportMarkets = make(map[string]types.Token)
+	allMarkets = make([]string, 0)
+	allTokenPairs = make([]TokenPair, 0)
+	symbolTokenMap = make(map[common.Address]string)
+
+	var list []token
+	tokenfile = lgh_util.FindConfigFile(tokenfile)
+	fn, err := os.Open(tokenfile)
+	if err != nil {
+		log.Fatalf("market util load tokens failed:%s", err.Error())
+	}
+	bs, err := ioutil.ReadAll(fn)
+	if err != nil {
+		log.Fatalf("market util read tokens json file failed:%s", err.Error())
+	}
+	if err := json.Unmarshal(bs, &list); err != nil {
+		log.Fatalf("market util unmarshal tokens failed:%s", err.Error())
+	}
+
+	for _, v := range list {
+		if v.Deny == false {
+			t := v.convert()
+			if t.IsMarket == true {
+				supportMarkets[t.Symbol] = t
+			} else {
+				supportTokens[t.Symbol] = t
+				log.Infof("market util,supported token:%s", t.Symbol)
+			}
+		}
+	}
+
+	// set all tokens
+	for k, v := range supportTokens {
+		allTokens[k] = v
+		symbolTokenMap[v.Protocol] = v.Symbol
+	}
+	for k, v := range supportMarkets {
+		allTokens[k] = v
+		symbolTokenMap[v.Protocol] = v.Symbol
+	}
+
+	// set all markets
+	// lgh: k == Symbol, kk == Symbol
+	for k := range allTokens { // lrc,omg
+		for kk := range supportMarkets { //eth
+			// map[string]uint8{"BAR": 5, "LRC": 10, "WETH": 20, "DAI": 30}
+			// todo 看不懂的地方
 			o, ok := MarketBaseOrder[k]
 			if ok {
 				baseOrder := MarketBaseOrder[kk]

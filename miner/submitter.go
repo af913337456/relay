@@ -65,30 +65,45 @@ type RingSubmitFailed struct {
 }
 
 func NewSubmitter(options config.MinerOptions, dbService dao.RdsService, marketCapProvider marketcap.MarketCapProvider) (*RingSubmitter, error) {
+	// lgh: 环提交者
 	submitter := &RingSubmitter{}
+	// lgh: 初始化油费的收款范围
 	submitter.maxGasLimit = big.NewInt(options.MaxGasLimit)
 	submitter.minGasLimit = big.NewInt(options.MinGasLimit)
 	if common.IsHexAddress(options.FeeReceipt) {
+		// todo lgh: 提交者的收费人地址？
 		submitter.feeReceipt = common.HexToAddress(options.FeeReceipt)
 	} else {
 		return submitter, errors.New("miner.feeReceipt must be a address")
 	}
 
+	// lgh: 下面初始化矿工账号 和 检验有效性
 	for _, addr := range options.NormalMiners {
 		var nonce types.Big
 		normalAddr := common.HexToAddress(addr.Address)
+		/* lgh: 以太坊方法 GetTransactionCount，根据区块号码blockNumber，矿工地址address，
+		去查询当前区块的nonce数值，又称当前交易的nonce。
+		有三个特殊的区块号码：
+		1，创世块 earliest
+		2，最近刚出的最新块 latest
+		3，等待被区块链确认状态（pending)
+		*/
+		// lgh: 获取正在被确认的区块 nonce 号，防止传输错误
+		// 相关解析文章：https://blog.csdn.net/wo541075754/article/details/78081478?locationNum=3&fps=1
 		if err := ethaccessor.GetTransactionCount(&nonce, normalAddr, "pending"); nil != err {
 			log.Errorf("err:%s", err.Error())
 		}
+		// lgh: 初始化矿工实体，根据设置后的矿工账号
 		miner := &NormalSenderAddress{}
 		miner.Address = normalAddr
 		miner.GasPriceLimit = big.NewInt(addr.GasPriceLimit)
-		miner.MaxPendingCount = addr.MaxPendingCount
+		miner.MaxPendingCount = addr.MaxPendingCount // lgh: 在区块等待确认状态下，能允许miner再次发送tx。直到最大的等待计数块超过 MaxPendingCount
 		miner.MaxPendingTtl = addr.MaxPendingTtl
-		miner.Nonce = nonce.BigInt()
+		miner.Nonce = nonce.BigInt() // lgh: 告知当前矿工正在交易的 nonce 数值，防止后续的交易设置nonce出错
 		submitter.normalMinerAddresses = append(submitter.normalMinerAddresses, miner)
 	}
 
+	// lgh: PercentMiners 按百分比计费的矿工?
 	for _, addr := range options.PercentMiners {
 		var nonce types.Big
 		normalAddr := common.HexToAddress(addr.Address)
@@ -219,7 +234,11 @@ func (submitter *RingSubmitter) submitRing(ringSubmitInfo *types.RingSubmitInfo)
 
 	if nil == err {
 		txHashStr := "0x"
-		txHashStr, err = ethaccessor.SignAndSendTransaction(ringSubmitInfo.Miner, ringSubmitInfo.ProtocolAddress, ringSubmitInfo.ProtocolGas, ringSubmitInfo.ProtocolGasPrice, nil, ringSubmitInfo.ProtocolData, false)
+		txHashStr, err = ethaccessor.SignAndSendTransaction(
+			ringSubmitInfo.Miner,
+			ringSubmitInfo.ProtocolAddress,
+			ringSubmitInfo.ProtocolGas,
+			ringSubmitInfo.ProtocolGasPrice, nil, ringSubmitInfo.ProtocolData, false)
 		if nil != err {
 			log.Errorf("submitring hash:%s, err:%s", ringSubmitInfo.Ringhash.Hex(), err.Error())
 			status = types.TX_STATUS_FAILED
