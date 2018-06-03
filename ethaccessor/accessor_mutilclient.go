@@ -224,8 +224,13 @@ func (mc *MutilClient) Call(routeParam string, result interface{}, method string
 		if nil == rpcClient {
 			return "", errors.New("there isn't an usable ethnode")
 		}
-		log.Debugf("rpcClient:%s, %s", rpcClient.url, routeParam)
+		log.Debugf("rpcClient:%s, %s ,%s", rpcClient.url,method, routeParam)
 		err = rpcClient.client.Call(result, method, args...)
+		if err != nil {
+			log.Debugf("rpc Call err :%s", err.Error())
+		}else{
+			log.Debugf("rpc Call success")
+		}
 		return rpcClient.url, err
 	}
 }

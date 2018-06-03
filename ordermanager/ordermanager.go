@@ -436,7 +436,10 @@ func (om *OrderManagerImpl) IsValueDusted(tokenAddress common.Address, value *bi
 	}
 }
 
-func (om *OrderManagerImpl) MinerOrders(protocol, tokenS, tokenB common.Address, length int, reservedTime, startBlockNumber, endBlockNumber int64, filterOrderHashLists ...*types.OrderDelayList) []*types.OrderState {
+func (om *OrderManagerImpl) MinerOrders(
+	protocol, tokenS, tokenB common.Address,
+	length int, reservedTime, startBlockNumber,
+	endBlockNumber int64, filterOrderHashLists ...*types.OrderDelayList) []*types.OrderState {
 	var list []*types.OrderState
 
 	// 订单在extractor同步结束后才可以提供给miner进行撮合
@@ -447,6 +450,8 @@ func (om *OrderManagerImpl) MinerOrders(protocol, tokenS, tokenB common.Address,
 	var (
 		modelList    []*dao.Order
 		err          error
+		// lgh: 过滤掉订单处于完成，切断，取消状态的。状态的更改在 abi event 类型的方法被触发后进行。
+		// 具体见函数 loadProtocolContract。由调用合约函数的人触发
 		filterStatus = []types.OrderStatus{types.ORDER_FINISHED, types.ORDER_CUTOFF, types.ORDER_CANCEL}
 	)
 

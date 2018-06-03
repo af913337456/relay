@@ -257,14 +257,17 @@ func (processor *AbiProcessor) loadProtocolAddress() {
 	}
 }
 
+// lgh: 找出abi 里面。type 是事件 event 类型的方法。事先给他们注册好监听方法
 func (processor *AbiProcessor) loadProtocolContract() {
 	for name, event := range ethaccessor.ProtocolImplAbi().Events {
-		if name != ethaccessor.EVENT_RING_MINED && name != ethaccessor.EVENT_ORDER_CANCELLED && name != ethaccessor.EVENT_CUTOFF_ALL && name != ethaccessor.EVENT_CUTOFF_PAIR {
+		if name != ethaccessor.EVENT_RING_MINED &&
+			name != ethaccessor.EVENT_ORDER_CANCELLED &&
+				name != ethaccessor.EVENT_CUTOFF_ALL && name != ethaccessor.EVENT_CUTOFF_PAIR {
 			continue
 		}
 
 		watcher := &eventemitter.Watcher{}
-		contract := newEventData(&event, ethaccessor.ProtocolImplAbi())
+		contract := newEventData(&event, ethaccessor.ProtocolImplAbi()) // lgh： commonOptions.ProtocolImpl.ImplAbi 初始化而来
 
 		switch contract.Name {
 		case ethaccessor.EVENT_RING_MINED:

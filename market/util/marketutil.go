@@ -176,7 +176,10 @@ func getTokenAndMarketFromDB(tokenfile string) (
 	for _, v := range supportMarkets {
 		for _, vv := range allTokens {
 			if v.Symbol != vv.Symbol {
+				// lgh: 所有的买卖映射情况，即是哪种币能和哪种币交易
+				// lgh: 市场代币符号—>非市场代币符号
 				pairsMap[v.Symbol+"-"+vv.Symbol] = TokenPair{v.Protocol, vv.Protocol}
+				// lgh: 非市场代币符号—>市场代币符号
 				pairsMap[vv.Symbol+"-"+v.Symbol] = TokenPair{vv.Protocol, v.Protocol}
 			}
 		}

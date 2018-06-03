@@ -7,6 +7,12 @@ import (
 	"github.com/Loopring/relay/market/util"
 	"fmt"
 	"encoding/json"
+	"github.com/Loopring/relay/ethaccessor"
+	"github.com/Loopring/relay/config"
+	"github.com/Loopring/relay/log"
+	"github.com/Loopring/relay/txmanager"
+	"github.com/Loopring/relay/cache"
+	"github.com/Loopring/relay/dao"
 )
 var (
 	SupportTokens  map[string]types.Token // token symbol to entity
@@ -65,8 +71,13 @@ func printTokens(target map[string]types.Token)  {
 	fmt.Println("==========")
 }
 
-func Testaa(t *testing.T) {
-	
+func TestAA(t *testing.T) {
+	c := config.LoadConfig("../config/relay.toml")
+	log.Initialize(c.Log)
+	rds := dao.NewRdsService(c.Mysql)
+	txmanager.NewTxView(rds)
+	cache.NewCache(c.Redis)
+	ethaccessor.Initialize(c.Accessor, c.Common, AllTokens["WETH"].Protocol)
 }
 
 

@@ -306,12 +306,18 @@ func Initialize(accessorOptions config.AccessorOptions, commonOptions config.Com
 	//	accessor.NameRegistryAbi = nameRegistryAbi
 	//}
 
-	// lgh: 进行rpc请求，验证这些合约的有效性的同时获取它们的地址，因为上面初始化好了一些ABI，一个合约实例还差地址
+	// lgh: 进行rpc请求，验证这些ProtocolImpl.Address的有效性的同时获取它们的地址
 	for version, address := range commonOptions.ProtocolImpl.Address {
-		impl := &ProtocolAddress{Version: version, ContractAddress: common.HexToAddress(address)}
+		fmt.Println("address ===> "+address)
+		impl := &ProtocolAddress{
+			Version: version,
+			ContractAddress: common.HexToAddress(address)}
+		// todo lgh: unit test
 		callMethod := accessor.ContractCallMethod(accessor.ProtocolImplAbi, impl.ContractAddress)
 		var addr string
-		if err := callMethod(&addr, "lrcTokenAddress", "latest"); nil != err {
+		// todo test 输出看看 addr
+		if err := callMethod(&addr, "你好", "latest"); nil != err {
+			fmt.Println(err.Error())
 			return err
 		} else {
 			log.Debugf("version:%s, contract:%s, lrcTokenAddress:%s", version, address, addr)

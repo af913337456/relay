@@ -30,11 +30,11 @@ import (
 	"github.com/Loopring/relay/types"
 	gocache "github.com/patrickmn/go-cache"
 	"github.com/robfig/cron"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+	"sort"
 )
 
 const (

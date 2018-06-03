@@ -58,7 +58,14 @@ type TimingMatcher struct {
 	stopFuncs []func()
 }
 
-func NewTimingMatcher(matcherOptions *config.TimingMatcher, submitter *miner.RingSubmitter, evaluator *miner.Evaluator, om ordermanager.OrderManager, accountManager *marketLib.AccountManager, rds dao.RdsService) *TimingMatcher {
+func NewTimingMatcher(
+	matcherOptions *config.TimingMatcher,
+	submitter *miner.RingSubmitter,
+	evaluator *miner.Evaluator,
+	om ordermanager.OrderManager,
+	accountManager *marketLib.AccountManager,
+	rds dao.RdsService) *TimingMatcher {
+
 	matcher := &TimingMatcher{}
 	matcher.submitter = submitter
 	matcher.evaluator = evaluator
@@ -88,6 +95,7 @@ func NewTimingMatcher(matcherOptions *config.TimingMatcher, submitter *miner.Rin
 
 	for _, pair := range marketUtilLib.AllTokenPairs {
 		inited := false
+		// lgh: 第一个for 循环放置重复设置，因为 slice append 不是 map 不能直接排重
 		for _, market := range matcher.markets {
 			if (market.TokenB == pair.TokenB && market.TokenA == pair.TokenS) ||
 				(market.TokenA == pair.TokenB && market.TokenB == pair.TokenS) {
@@ -96,7 +104,9 @@ func NewTimingMatcher(matcherOptions *config.TimingMatcher, submitter *miner.Rin
 			}
 		}
 		if !inited {
+			// lgh: 还没有被初始化的，下面进行初始化
 			for _, protocolAddress := range ethaccessor.ProtocolAddresses() {
+				// lgh: 初始化匹配者的 market
 				m := &Market{}
 				m.protocolImpl = protocolAddress
 				m.om = om

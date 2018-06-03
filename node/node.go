@@ -266,8 +266,11 @@ func (n *Node) registerMiner() {
 		log.Fatalf("failed to init submitter, error:%s", err.Error())
 	}
 	evaluator := miner.NewEvaluator(n.marketCapProvider, n.globalConfig.Miner)
-	matcher := timing_matcher.NewTimingMatcher(n.globalConfig.Miner.TimingMatcher, submitter, evaluator, n.orderManager, &n.accountManager, n.rdsService)
+	matcher := timing_matcher.NewTimingMatcher(
+		n.globalConfig.Miner.TimingMatcher,
+		submitter, evaluator, n.orderManager, &n.accountManager, n.rdsService)
 	evaluator.SetMatcher(matcher)
+	// lgh: 一个矿工实体包含有 提交者，匹配者，计费者
 	n.mineNode.miner = miner.NewMiner(submitter, matcher, evaluator, n.marketCapProvider)
 }
 

@@ -34,7 +34,7 @@ import (
 
 type Evaluator struct {
 	marketCapProvider         marketcap.MarketCapProvider
-	rateRatioCVSThreshold     int64
+	rateRatioCVSThreshold     int64  // lgh: 汇率比率系数阈值
 	gasUsedWithLength         map[int]*big.Int
 	realCostRate, walletSplit *big.Rat
 

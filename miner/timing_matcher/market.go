@@ -204,7 +204,11 @@ func (market *Market) getOrdersForMatching(delegateAddress common.Address) {
 	currentRoundNumber := market.matcher.lastRoundNumber.Int64()
 	deleyedNumber := market.matcher.delayedNumber + currentRoundNumber
 
-	atoBOrders := market.om.MinerOrders(delegateAddress, market.TokenA, market.TokenB, market.matcher.roundOrderCount, market.matcher.reservedTime, int64(0), currentRoundNumber, &types.OrderDelayList{OrderHash: market.AtoBOrderHashesExcludeNextRound, DelayedCount: deleyedNumber})
+	atoBOrders := market.om.MinerOrders(
+		delegateAddress, market.TokenA, market.TokenB,
+		market.matcher.roundOrderCount, market.matcher.reservedTime,
+		int64(0), currentRoundNumber,
+		&types.OrderDelayList{OrderHash: market.AtoBOrderHashesExcludeNextRound, DelayedCount: deleyedNumber})
 
 	if len(atoBOrders) < market.matcher.roundOrderCount {
 		orderCount := market.matcher.roundOrderCount - len(atoBOrders)

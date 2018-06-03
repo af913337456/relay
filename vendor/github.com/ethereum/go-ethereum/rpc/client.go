@@ -248,6 +248,7 @@ func (c *Client) Call(result interface{}, method string, args ...interface{}) er
 // The result must be a pointer so that package json can unmarshal into it. You
 // can also pass nil, in which case the result is ignored.
 func (c *Client) CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error {
+	fmt.Println("rpc","args",args)
 	msg, err := c.newMessage(method, args...)
 	if err != nil {
 		return err
@@ -272,6 +273,7 @@ func (c *Client) CallContext(ctx context.Context, result interface{}, method str
 	case len(resp.Result) == 0:
 		return ErrNoResult
 	default:
+		fmt.Println("rpc-call-result: "+string(resp.Result))
 		return json.Unmarshal(resp.Result, &result)
 	}
 }
