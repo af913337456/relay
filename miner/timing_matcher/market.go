@@ -209,6 +209,7 @@ func (market *Market) getOrdersForMatching(delegateAddress common.Address) {
 		delegateAddress, // lgh: 配置文件的地址
 		market.TokenA, // lgh: AllTokenPairs 的 tokenS
 		market.TokenB, // lgh: AllTokenPairs 的 tokenB
+		// lgh: 目前看来是要取的条数，从数据库中获取订单
 		market.matcher.roundOrderCount, // 配置文件中的 roundOrderCount，默认是 2
 		market.matcher.reservedTime, // 保留的提交时间，默认是 45，单位未知
 		int64(0),

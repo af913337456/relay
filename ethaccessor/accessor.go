@@ -306,7 +306,11 @@ func Initialize(accessorOptions config.AccessorOptions, commonOptions config.Com
 	//	accessor.NameRegistryAbi = nameRegistryAbi
 	//}
 
-	// lgh: 进行rpc请求，验证这些ProtocolImpl.Address的有效性的同时获取它们的地址
+	// lgh: 进行rpc请求，验证ProtocolImpl.Address的有效性的同时获取它们的地址
+	// lgh: 根据文档显示，这个 ProtocolImpl.Address 应该设置为 LoopringProtocolImpl
+	// lgh: lrcTokenAddress,tokenRegistryAddress,delegateAddress 在 LoopringProtocolImpl 中获取
+	// lgh: 且 delegateAddress 还是应该对应客户端订单中的 DelegateAddress 字段，这样才能在数据库中匹配中
+	// https://github.com/Loopring/token-listing/blob/master/ethereum/deployment.md
 	for version, address := range commonOptions.ProtocolImpl.Address {
 		fmt.Println("address ===> "+address)
 		impl := &ProtocolAddress{
@@ -333,6 +337,7 @@ func Initialize(accessorOptions config.AccessorOptions, commonOptions config.Com
 			return err
 		} else {
 			log.Debugf("version:%s, contract:%s, delegateAddress:%s", version, address, addr)
+			// lgh: 最终 market 的 market.getOrdersForMatching(market.protocolImpl.DelegateAddress) 来自于下面
 			impl.DelegateAddress = common.HexToAddress(addr)
 		}
 		//if err := callMethod(&addr, "nameRegistryAddress", "latest"); nil != err {

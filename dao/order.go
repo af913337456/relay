@@ -212,7 +212,8 @@ func (s *RdsServiceImpl) GetOrdersForMiner(protocol, tokenS, tokenB string, leng
 	nowtime := time.Now().Unix()
 	sinceTime := nowtime
 	untilTime := nowtime + reservedTime
-	err = s.db.Where("delegate_address = ? and token_s = ? and token_b = ?", protocol, tokenS, tokenB).
+	err = s.db.Where(
+		"delegate_address = ? and token_s = ? and token_b = ?", protocol, tokenS, tokenB).
 		Where("valid_since < ?", sinceTime).
 		Where("valid_until >= ? ", untilTime).
 		Where("status not in (?) ", filterStatus).

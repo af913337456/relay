@@ -181,27 +181,6 @@ func (om *OrderManagerImpl) handleSubmitRingMethod(input eventemitter.EventData)
 	return nil
 }
 
-// 所有来自gateway的订单都是新订单
-func (om *OrderManagerImpl) handleGatewayOrder(input eventemitter.EventData) error {
-	state := input.(*types.OrderState)
-	log.Debugf("order manager,handle gateway order,order.hash:%s amountS:%s", state.RawOrder.Hash.Hex(), state.RawOrder.AmountS.String())
-
-	//lgh: 内部做一些信息的包装
-	model, err := newOrderEntity(state, om.mc, nil)
-	if err != nil {
-		log.Errorf("order manager,handle gateway order:%s error: %s", state.RawOrder.Hash.Hex(),err.Error())
-		return err
-	}
-
-	// lgh: 深度更新事件
-	eventemitter.Emit(eventemitter.DepthUpdated,
-		types.DepthUpdateEvent{
-			DelegateAddress: model.DelegateAddress,
-			Market: model.Market})
-
-	return om.rds.Add(model) // lgh: 这个时候才把订单放入到本地数据库
-}
-
 func (om *OrderManagerImpl) handleRingMined(input eventemitter.EventData) error {
 	event := input.(*types.RingMinedEvent)
 
@@ -442,6 +421,27 @@ func (om *OrderManagerImpl) IsValueDusted(tokenAddress common.Address, value *bi
 	}
 }
 
+// 所有来自gateway的订单都是新订单
+func (om *OrderManagerImpl) handleGatewayOrder(input eventemitter.EventData) error {
+	state := input.(*types.OrderState)
+	log.Debugf("order manager,handle gateway order,order.hash:%s amountS:%s", state.RawOrder.Hash.Hex(), state.RawOrder.AmountS.String())
+
+	//lgh: 内部做一些信息的包装
+	model, err := newOrderEntity(state, om.mc, nil)
+	if err != nil {
+		log.Errorf("order manager,handle gateway order:%s error: %s", state.RawOrder.Hash.Hex(),err.Error())
+		return err
+	}
+
+	// lgh: 深度更新事件
+	eventemitter.Emit(eventemitter.DepthUpdated,
+		types.DepthUpdateEvent{
+			DelegateAddress: model.DelegateAddress,
+			Market: model.Market})
+
+	return om.rds.Add(model) // lgh: 这个时候才把订单放入到本地数据库
+}
+
 func (om *OrderManagerImpl) MinerOrders(
 	protocol, tokenS, tokenB common.Address,
 	length int, reservedTime, startBlockNumber,
@@ -483,7 +483,7 @@ func (om *OrderManagerImpl) MinerOrders(
 		length, // 是2
 		filterStatus,
 		reservedTime, // 保留的时间 45
-		startBlockNumber, // 0
+		startBlockNumber, // 有时候是0
 		// endBlockNumber 进入循环 + 10000 = 10 秒
 		endBlockNumber); err != nil {
 
