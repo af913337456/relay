@@ -316,7 +316,7 @@ func Initialize(accessorOptions config.AccessorOptions, commonOptions config.Com
 		callMethod := accessor.ContractCallMethod(accessor.ProtocolImplAbi, impl.ContractAddress)
 		var addr string
 		// todo test 输出看看 addr
-		if err := callMethod(&addr, "你好", "latest"); nil != err {
+		if err := callMethod(&addr, "lrcTokenAddress", "latest"); nil != err {
 			fmt.Println(err.Error())
 			return err
 		} else {

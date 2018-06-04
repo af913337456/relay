@@ -31,8 +31,9 @@ import (
 
 var dustOrderValue int64
 
+// lgh: 目前新订单到来的情况，blockNumber 是 nil
 func newOrderEntity(state *types.OrderState, mc marketcap.MarketCapProvider, blockNumber *big.Int) (*dao.Order, error) {
-	blockNumberStr := blockNumberToString(blockNumber)
+	blockNumberStr := blockNumberToString(blockNumber) // latest，最新形成的
 
 	state.DealtAmountS = big.NewInt(0)
 	state.DealtAmountB = big.NewInt(0)
@@ -41,14 +42,19 @@ func newOrderEntity(state *types.OrderState, mc marketcap.MarketCapProvider, blo
 	state.CancelledAmountB = big.NewInt(0)
 	state.CancelledAmountS = big.NewInt(0)
 
+	// lgh: 给订单表上标识，是 买的，还是卖的
 	state.RawOrder.Side = util.GetSide(state.RawOrder.TokenS.Hex(), state.RawOrder.TokenB.Hex())
 
 	protocol := state.RawOrder.DelegateAddress
-	cancelAmount, dealtAmount, getAmountErr := getCancelledAndDealtAmount(protocol, state.RawOrder.Hash, blockNumberStr)
+	// lgh: cancelAmount 取消那的部分。dealtAmount 已经处理卖了的那部分。目前返回全是 0
+	cancelAmount, dealtAmount, getAmountErr :=
+		// lgh: todo 目前这个方法内部是直接返回的
+		getCancelledAndDealtAmount(protocol, state.RawOrder.Hash, blockNumberStr)
 	if getAmountErr != nil {
 		return nil, getAmountErr
 	}
 
+	// lgh: 下面的总是 0。
 	if state.RawOrder.BuyNoMoreThanAmountB {
 		state.DealtAmountB = dealtAmount
 		state.CancelledAmountB = cancelAmount
@@ -58,16 +64,17 @@ func newOrderEntity(state *types.OrderState, mc marketcap.MarketCapProvider, blo
 	}
 
 	// check order finished status
-	settleOrderStatus(state, mc, ORDER_FROM_FILL)
+	settleOrderStatus(state, mc, ORDER_FROM_FILL) // lgh: 目前这里内部总是直接设置为新订单状态
 
 	if blockNumber == nil {
-		state.UpdatedBlock = big.NewInt(0)
+		state.UpdatedBlock = big.NewInt(0) // 这个
 	} else {
 		state.UpdatedBlock = blockNumber
 	}
 
 	model := &dao.Order{}
 	var err error
+	// lgh: model.market 的格式是 --> LRC-WETH
 	model.Market, err = util.WrapMarketByAddress(state.RawOrder.TokenB.Hex(), state.RawOrder.TokenS.Hex())
 	if err != nil {
 		return nil, fmt.Errorf("order manager,newOrderEntity error:%s", err.Error())
@@ -87,14 +94,14 @@ const (
 
 func settleOrderStatus(state *types.OrderState, mc marketcap.MarketCapProvider, source OrderFillOrCancelType) {
 	zero := big.NewInt(0)
-	finishAmountS := big.NewInt(0).Add(state.CancelledAmountS, state.DealtAmountS)
-	totalAmountS := big.NewInt(0).Add(finishAmountS, state.SplitAmountS)
-	finishAmountB := big.NewInt(0).Add(state.CancelledAmountB, state.DealtAmountB)
-	totalAmountB := big.NewInt(0).Add(finishAmountB, state.SplitAmountB)
-	totalAmount := big.NewInt(0).Add(totalAmountS, totalAmountB)
+	finishAmountS := big.NewInt(0).Add(state.CancelledAmountS, state.DealtAmountS) // 0+0
+	totalAmountS := big.NewInt(0).Add(finishAmountS, state.SplitAmountS)// 0+0
+	finishAmountB := big.NewInt(0).Add(state.CancelledAmountB, state.DealtAmountB) // 0+0
+	totalAmountB := big.NewInt(0).Add(finishAmountB, state.SplitAmountB) // 0+0
+	totalAmount := big.NewInt(0).Add(totalAmountS, totalAmountB) // 0+0
 
 	if totalAmount.Cmp(zero) <= 0 {
-		state.Status = types.ORDER_NEW
+		state.Status = types.ORDER_NEW // lgh: 直接返回 新订单
 		return
 	}
 
@@ -158,6 +165,7 @@ func blockNumberToString(blockNumber *big.Int) string {
 
 func getCancelledAndDealtAmount(protocol common.Address, orderhash common.Hash, blockNumberStr string) (*big.Int, *big.Int, error) {
 	// TODO(fuk): 系统暂时只会从gateway接收新订单,而不会有部分成交的订单
+
 	return big.NewInt(0), big.NewInt(0), nil
 
 	var (

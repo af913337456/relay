@@ -186,14 +186,20 @@ func (om *OrderManagerImpl) handleGatewayOrder(input eventemitter.EventData) err
 	state := input.(*types.OrderState)
 	log.Debugf("order manager,handle gateway order,order.hash:%s amountS:%s", state.RawOrder.Hash.Hex(), state.RawOrder.AmountS.String())
 
+	//lgh: 内部做一些信息的包装
 	model, err := newOrderEntity(state, om.mc, nil)
 	if err != nil {
-		log.Errorf("order manager,handle gateway order:%s error", state.RawOrder.Hash.Hex())
+		log.Errorf("order manager,handle gateway order:%s error: %s", state.RawOrder.Hash.Hex(),err.Error())
 		return err
 	}
 
-	eventemitter.Emit(eventemitter.DepthUpdated, types.DepthUpdateEvent{DelegateAddress: model.DelegateAddress, Market: model.Market})
-	return om.rds.Add(model)
+	// lgh: 深度更新事件
+	eventemitter.Emit(eventemitter.DepthUpdated,
+		types.DepthUpdateEvent{
+			DelegateAddress: model.DelegateAddress,
+			Market: model.Market})
+
+	return om.rds.Add(model) // lgh: 这个时候才把订单放入到本地数据库
 }
 
 func (om *OrderManagerImpl) handleRingMined(input eventemitter.EventData) error {
@@ -455,12 +461,14 @@ func (om *OrderManagerImpl) MinerOrders(
 		filterStatus = []types.OrderStatus{types.ORDER_FINISHED, types.ORDER_CUTOFF, types.ORDER_CANCEL}
 	)
 
+	// lgh: filterOrderHashLists 目前的 size 总是 1
 	for _, orderDelay := range filterOrderHashLists {
 		orderHashes := []string{}
 		for _, hash := range orderDelay.OrderHash {
 			orderHashes = append(orderHashes, hash.Hex())
 		}
 		if len(orderHashes) > 0 && orderDelay.DelayedCount != 0 {
+			// lgh: 如果存在要延时的订单，下面去数据库更新它们的 blockNumber，排队号
 			if err = om.rds.MarkMinerOrders(orderHashes, orderDelay.DelayedCount); err != nil {
 				log.Debugf("order manager,provide orders for miner error:%s", err.Error())
 			}
@@ -468,7 +476,17 @@ func (om *OrderManagerImpl) MinerOrders(
 	}
 
 	// 从数据库获取订单
-	if modelList, err = om.rds.GetOrdersForMiner(protocol.Hex(), tokenS.Hex(), tokenB.Hex(), length, filterStatus, reservedTime, startBlockNumber, endBlockNumber); err != nil {
+	if modelList, err = om.rds.GetOrdersForMiner(
+		protocol.Hex(), // 配置文件的
+		tokenS.Hex(),
+		tokenB.Hex(),
+		length, // 是2
+		filterStatus,
+		reservedTime, // 保留的时间 45
+		startBlockNumber, // 0
+		// endBlockNumber 进入循环 + 10000 = 10 秒
+		endBlockNumber); err != nil {
+
 		log.Errorf("err:%s", err.Error())
 		return list
 	}
@@ -535,7 +553,7 @@ func (om *OrderManagerImpl) GetOrders(query map[string]interface{}, statusList [
 
 func (om *OrderManagerImpl) GetOrderByHash(hash common.Hash) (orderState *types.OrderState, err error) {
 	var result types.OrderState
-	order, err := om.rds.GetOrderByHash(hash)
+	order, err := om.rds.GetOrderByHash(hash) // lgh: 从数据库根据 hash 值获取订单
 	if err != nil {
 		return nil, err
 	}

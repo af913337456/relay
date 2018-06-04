@@ -70,7 +70,7 @@ type Order struct {
 	Market                string                     `json:"market"`
 	CreateTime            int64                      `json:"createTime"`
 	PowNonce              uint64                     `json:"powNonce"`
-	Side                  string                     `json:"side"`
+	Side                  string                     `json:"side"` // 买的，还是卖的。标识符
 	OrderType             string                     `json:"orderType"`
 }
 

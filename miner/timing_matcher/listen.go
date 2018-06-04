@@ -127,6 +127,7 @@ func (matcher *TimingMatcher) listenTimingRound() {
 			return
 		}
 		//if ethaccessor.Synced() {
+		// lgh: // 纳秒时间戳 / 1e6 = 毫秒时间戳，上一次开始环形的毫秒时间戳
 		matcher.lastRoundNumber = big.NewInt(time.Now().UnixNano() / 1e6)
 		//matcher.rounds.appendNewRoundState(matcher.lastRoundNumber)
 		var wg sync.WaitGroup

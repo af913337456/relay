@@ -46,6 +46,7 @@ type Market struct {
 }
 
 func (market *Market) match() {
+	// lgh: market.protocolImpl.DelegateAddress 就是配置文件中的 common.protocolImpl.address 去获取对应的信息后设置好的
 	market.getOrdersForMatching(market.protocolImpl.DelegateAddress)
 	matchedOrderHashes := make(map[common.Hash]bool) //true:fullfilled, false:partfilled
 	ringSubmitInfos := []*types.RingSubmitInfo{}
@@ -201,13 +202,19 @@ func (market *Market) getOrdersForMatching(delegateAddress common.Address) {
 	market.BtoAOrders = make(map[common.Hash]*types.OrderState)
 
 	// log.Debugf("timing matcher,market tokenA:%s, tokenB:%s, atob hash length:%d, btoa hash length:%d", market.TokenA.Hex(), market.TokenB.Hex(), len(market.AtoBOrderHashesExcludeNextRound), len(market.BtoAOrderHashesExcludeNextRound))
-	currentRoundNumber := market.matcher.lastRoundNumber.Int64()
+	currentRoundNumber := market.matcher.lastRoundNumber.Int64() // lgh: 一个毫秒级别的时间戳
 	deleyedNumber := market.matcher.delayedNumber + currentRoundNumber
 
 	atoBOrders := market.om.MinerOrders(
-		delegateAddress, market.TokenA, market.TokenB,
-		market.matcher.roundOrderCount, market.matcher.reservedTime,
-		int64(0), currentRoundNumber,
+		delegateAddress, // lgh: 配置文件的地址
+		market.TokenA, // lgh: AllTokenPairs 的 tokenS
+		market.TokenB, // lgh: AllTokenPairs 的 tokenB
+		market.matcher.roundOrderCount, // 配置文件中的 roundOrderCount，默认是 2
+		market.matcher.reservedTime, // 保留的提交时间，默认是 45，单位未知
+		int64(0),
+		currentRoundNumber, // 开始进入循环时候的当前的毫秒级别的时间戳
+		// lgh: AtoBOrderHashesExcludeNextRound 一开始是空切片。应该是用来过滤某些订单的
+		// deleyedNumber 是开始时候的毫秒数 + 10000，就是多了10秒
 		&types.OrderDelayList{OrderHash: market.AtoBOrderHashesExcludeNextRound, DelayedCount: deleyedNumber})
 
 	if len(atoBOrders) < market.matcher.roundOrderCount {

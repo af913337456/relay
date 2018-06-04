@@ -55,7 +55,7 @@ func TestName(t *testing.T) {
 	}
 	fmt.Println("=====AllTokenPairs=====")
 	for _,v := range AllTokenPairs {
-		fmt.Println("sell: "+SymbolTokenMap[v.TokenS]+" ---> "+"buy: "+SymbolTokenMap[v.TokenB])
+		fmt.Println("sell: TokenS "+SymbolTokenMap[v.TokenS]+" ---> "+"buy: TokenB "+SymbolTokenMap[v.TokenB])
 		fmt.Println("sell: "+v.TokenS.String()+" ---> "+"buy: "+v.TokenB.String())
 		fmt.Println("---")
 	}

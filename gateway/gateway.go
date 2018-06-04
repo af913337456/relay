@@ -115,10 +115,13 @@ func HandleInputOrder(input eventemitter.EventData) (orderHash string, err error
 
 	//TODO(xiaolu) 这里需要测试一下，超时error和查询数据为空的error，处理方式不应该一样
 	if state, err = gateway.om.GetOrderByHash(order.Hash); err != nil && err.Error() == "record not found" {
+		// lgh: 如果该订单本地数据库没有记录，那么进入这里，触发新订单事件，否则触发订单已经存在的错误
+		// lgh: generate 生成，下面是生成实际价格比例，generatePrice 内部会判断交易的代币是否是 allToken 里面的，是否是被支持的
 		if err = generatePrice(order); err != nil {
 			return orderHash, err
 		}
 
+		// lgh: 订单数值的格式各种判断
 		for _, v := range gateway.filters {
 			valid, err := v.filter(order)
 			if !valid {
@@ -157,7 +160,7 @@ func HandleOrder(input eventemitter.EventData) error {
 }
 
 func generatePrice(order *types.Order) error {
-	tokenS, err := util.AddressToToken(order.TokenS)
+	tokenS, err := util.AddressToToken(order.TokenS) // lgh: 判断交易的代币是否是 allToken 里面的，是否是被支持的
 	if err != nil {
 		return err
 	}
@@ -180,6 +183,7 @@ func generatePrice(order *types.Order) error {
 	if order.AmountB == nil || order.AmountB.Cmp(big.NewInt(0)) < 1 {
 		return fmt.Errorf("order's amountB invalid")
 	}
+
 
 	order.Price = new(big.Rat).Mul(
 		new(big.Rat).SetFrac(order.AmountS, order.AmountB),
