@@ -169,19 +169,38 @@ func (matcher *TimingMatcher) Stop() {
 
 func (matcher *TimingMatcher) GetAccountAvailableAmount(address, tokenAddress, spender common.Address) (*big.Rat, error) {
 	//log.Debugf("address: %s , token: %s , spender: %s", address.Hex(), tokenAddress.Hex(), spender.Hex())
-	if balance, allowance, err := matcher.accountManager.GetBalanceAndAllowance(address, tokenAddress, spender); nil != err {
+	if balance, allowance, err :=
+		/**
+			order.RawOrder.Owner
+			market.protocolImpl.LrcTokenAddress
+			market.protocolImpl.DelegateAddress
+		*/
+		// lgh: GetBalanceAndAllowance 获取
+		// 1: Owner 在 LrcTokenAddress 合约的 Lrc 余额
+		// 2: owner 在 LrcTokenAddress 合约能够调用 DelegateAddress 账户的 token 数目，具体是什么 token 要到网页查看，猜测是 lrc
+		matcher.accountManager.GetBalanceAndAllowance(address, tokenAddress, spender); nil != err {
 		return nil, err
 	} else {
 		availableAmount := new(big.Rat).SetInt(balance)
 		allowanceAmount := new(big.Rat).SetInt(allowance)
 		if availableAmount.Cmp(allowanceAmount) > 0 {
+			// 如果 balance > allowance , balance = allowance
+			// todo 猜测，以 DelegateAddress 的 allowance 为准。是否在用户每次操作的时候都会设置 allowance ？
 			availableAmount = allowanceAmount
 		}
 		matchedAmountS, _ := FilledAmountS(address, tokenAddress)
 		log.Debugf("owner:%s, token:%s, spender:%s, availableAmount:%s, balance:%s, allowance:%s, matchedAmountS:%s", address.Hex(), tokenAddress.Hex(), spender.Hex(), availableAmount.FloatString(2), balance.String(), allowance.String(), matchedAmountS.FloatString(2))
-
+		// lgh: rat.sub 是相减，a/b.sub(a/b,a1/b1) = a/b - a1/b1
 		availableAmount.Sub(availableAmount, matchedAmountS)
 
 		return availableAmount, nil
 	}
 }
+
+
+
+
+
+
+
+

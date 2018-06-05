@@ -315,6 +315,7 @@ func (e *Evaluator) computeFeeOfRingAndOrder(ringState *types.Ring) error {
 func PriceValid(a2BOrder *types.OrderState, b2AOrder *types.OrderState) bool {
 	amountS := new(big.Int).Mul(a2BOrder.RawOrder.AmountS, b2AOrder.RawOrder.AmountS)
 	amountB := new(big.Int).Mul(a2BOrder.RawOrder.AmountB, b2AOrder.RawOrder.AmountB)
+	// lgh: s/b * s1/b1 >= 1 这里的就是路印成环规则
 	return amountS.Cmp(amountB) >= 0
 }
 

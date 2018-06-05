@@ -21,3 +21,4 @@ func main() {
 	ethaccessor.Initialize(c.Accessor, c.Common, util.WethTokenAddress())
 }
 
+

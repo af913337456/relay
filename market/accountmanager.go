@@ -77,22 +77,26 @@ func parseCacheField(field []byte) common.Address {
 }
 
 //todo:tokens
+// lgh: tokens 传进来了，根本没被使用！！
 func (b AccountBalances) batchReqs(tokens ...common.Address) ethaccessor.BatchBalanceReqs {
 	reqs := ethaccessor.BatchBalanceReqs{}
-	for _, token := range util.AllTokens {
+	// lgh: todo 应该在下面加个判断，如果 AllTokens 没有包含 Lrc 的，那么添加上，
+	// todo 防止在配置文件中去掉了 Lrc，造成外面提取的时候总是 0
+	for _, token := range util.AllTokens { // lgh: 寻找 owner 在支持的代币列表中，的各自余额
+		req := &ethaccessor.BatchBalanceReq{}
+		req.BlockParameter = "latest"
+		req.Token = token.Protocol // lgh: ---①
+		req.Owner = b.Owner
+		reqs = append(reqs, req)
+	}
+	for _, token := range b.CustomTokens { // lgh: todo CustomTokens 没有赋值地方，目前 size == 0
 		req := &ethaccessor.BatchBalanceReq{}
 		req.BlockParameter = "latest"
 		req.Token = token.Protocol
 		req.Owner = b.Owner
 		reqs = append(reqs, req)
 	}
-	for _, token := range b.CustomTokens {
-		req := &ethaccessor.BatchBalanceReq{}
-		req.BlockParameter = "latest"
-		req.Token = token.Protocol
-		req.Owner = b.Owner
-		reqs = append(reqs, req)
-	}
+	// function balanceOf(address _owner) constant returns (uint256 balance)
 	req := &ethaccessor.BatchBalanceReq{}
 	req.BlockParameter = "latest"
 	req.Token = common.HexToAddress("0x")
@@ -177,6 +181,7 @@ func (accountBalances AccountBalances) syncFromCache(tokens ...common.Address) e
 	return nil
 }
 
+// lgh: tokens 在 batchReqs 并没有被设置。相当于没有用上。下面获取的余额是 owner 在支持的代币列表中，的各自余额
 func (accountBalances AccountBalances) syncFromEthNode(tokens ...common.Address) error {
 	reqs := accountBalances.batchReqs(tokens...)
 	if err := ethaccessor.BatchCall("latest", []ethaccessor.BatchReq{reqs}); nil != err {
@@ -224,10 +229,14 @@ func parseAllowanceCacheField(data []byte) (token common.Address, spender common
 }
 
 //todo:tokens
+// lgh: 和获取余额 balance 的一样，tokens 也是没被使用上。依然采用 AllTokens 的
 func (accountAllowances *AccountAllowances) batchReqs(tokens, spenders []common.Address) ethaccessor.BatchErc20AllowanceReqs {
 	reqs := ethaccessor.BatchErc20AllowanceReqs{}
+	// allowed[_owner][_spender]
+	// 查看 Spender 还能够调用 Owner 多少个token
 	for _, v := range util.AllTokens {
 		for _, impl := range ethaccessor.ProtocolAddresses() {
+			/// lgh: impl 就是 LoopringProtocolImpl
 			req := &ethaccessor.BatchErc20AllowanceReq{}
 			req.BlockParameter = "latest"
 			req.Spender = impl.DelegateAddress
@@ -236,7 +245,7 @@ func (accountAllowances *AccountAllowances) batchReqs(tokens, spenders []common.
 			reqs = append(reqs, req)
 		}
 	}
-	for _, v := range accountAllowances.CustomTokens {
+	for _, v := range accountAllowances.CustomTokens { // CustomTokens.size == 0
 		for _, impl := range ethaccessor.ProtocolAddresses() {
 			req := &ethaccessor.BatchErc20AllowanceReq{}
 			req.BlockParameter = "latest"
@@ -347,10 +356,10 @@ func (accountAllowances *AccountAllowances) syncFromEthNode(tokens, spenders []c
 		} else {
 			allowance := Allowance{}
 			allowance.Allowance = &req.Allowance
-			//balance.LastBlock =
 			if _, exists := accountAllowances.Allowances[req.Token]; !exists {
 				accountAllowances.Allowances[req.Token] = make(map[common.Address]Allowance)
 			}
+			// lgh: 自行组合， allToken->token 对应 DelegateAddress 的 allowance
 			accountAllowances.Allowances[req.Token][req.Spender] = allowance
 		}
 	}
@@ -638,18 +647,33 @@ func (a *AccountManager) GetAllowanceWithSymbolResult(owner, spender common.Addr
 	return res, err
 }
 
+/**
+	order.RawOrder.Owner
+	market.protocolImpl.LrcTokenAddress
+	market.protocolImpl.DelegateAddress
+*/
 func (a *AccountManager) GetBalanceAndAllowance(owner, token, spender common.Address) (balance, allowance *big.Int, err error) {
 
 	accountBalances := &AccountBalances{}
 	accountBalances.Owner = owner
 	accountBalances.Balances = make(map[common.Address]Balance)
-	accountBalances.getOrSave(a.cacheDuration, token)
+
+	// lgh: 获取 owner 在 LrcToken 代币中的 Lrc 余额
+	accountBalances.getOrSave(a.cacheDuration, token) // lgh: LrcTokenAddress，虽然虽然传进去了，但是最终的组合没有带上它
+
+	// lgh: 下面特定提取 LrcTokenAddress 的余额，即是 Lrc，可能是 0。除非 allToken 列表中含有。所以这里有个 todo
 	balance = accountBalances.Balances[token].Balance.BigInt()
 
 	accountAllowances := &AccountAllowances{}
 	accountAllowances.Owner = owner
 	accountAllowances.Allowances = make(map[common.Address]map[common.Address]Allowance)
+	// function allowance(address _owner, address _spender) constant returns (uint256 remaining)
 	accountAllowances.getOrSave(a.cacheDuration, []common.Address{token}, []common.Address{spender})
+
+	// token == LrcTokenAddress, spender == DelegateAddress
+	// lgh: 下面特定提取 LrcTokenAddress 对应 DelegateAddress 的 allowance
+	// 此时的 allowance 相当于当前的 owner 在 LrcTokenAddress 地址能够调用 DelegateAddress 账户多少个 token ？？
+	// 具体是什么 token 要到网页查看，猜测是 lrc
 	allowance = accountAllowances.Allowances[token][spender].Allowance.BigInt()
 
 	return

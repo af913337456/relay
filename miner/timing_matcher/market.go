@@ -48,22 +48,30 @@ type Market struct {
 func (market *Market) match() {
 	// lgh: market.protocolImpl.DelegateAddress 就是配置文件中的 common.protocolImpl.address 去获取对应的信息后设置好的
 	market.getOrdersForMatching(market.protocolImpl.DelegateAddress)
+
 	matchedOrderHashes := make(map[common.Hash]bool) //true:fullfilled, false:partfilled
 	ringSubmitInfos := []*types.RingSubmitInfo{}
-	candidateRingList := CandidateRingList{}
+	candidateRingList := CandidateRingList{} // 候选环
 
-	//step 1: evaluate received
+	//step 1: evaluate received 接收评估
 	for _, a2BOrder := range market.AtoBOrders {
-		if failedCount, err1 := OrderExecuteFailedCount(a2BOrder.RawOrder.Hash); nil == err1 && failedCount > market.matcher.maxFailedCount {
+		// lgh: 下面去 redis 中寻找下是否有当前订单失败的计数
+		if failedCount, err1 := OrderExecuteFailedCount(a2BOrder.RawOrder.Hash);
+			// market.matcher.maxFailedCount = 3
+			nil == err1 && failedCount > market.matcher.maxFailedCount {
+				// 当前的订单失败计数超过了范围限制，那么 continue 跳过它
 			log.Debugf("orderhash:%s has been failed to submit %d times", a2BOrder.RawOrder.Hash.Hex(), failedCount)
 			continue
 		}
 		for _, b2AOrder := range market.BtoAOrders {
+			// 同上，这个循环是 b->a 的
 			if failedCount, err1 := OrderExecuteFailedCount(b2AOrder.RawOrder.Hash); nil == err1 && failedCount > market.matcher.maxFailedCount {
 				log.Debugf("orderhash:%s has been failed to submit %d times", b2AOrder.RawOrder.Hash.Hex(), failedCount)
 				continue
 			}
-			//todo:move a2BOrder.RawOrder.Owner != b2AOrder.RawOrder.Owner after contract fix bug
+			//todo:move ‘a2BOrder.RawOrder.Owner != b2AOrder.RawOrder.Owner’ after contract fix bug
+			// a2BOrder.RawOrder.Owner != b2AOrder.RawOrder.Owner 排除掉，找到自己的情况
+			// lgh: miner.PriceValid 内部就是判断 s/b * s1/b1 >= 1 这里的就是路印成环规则
 			if miner.PriceValid(a2BOrder, b2AOrder) && a2BOrder.RawOrder.Owner != b2AOrder.RawOrder.Owner {
 				if candidateRing, err := market.GenerateCandidateRing(a2BOrder, b2AOrder); nil != err {
 					log.Errorf("err:%s", err.Error())
@@ -209,7 +217,7 @@ func (market *Market) getOrdersForMatching(delegateAddress common.Address) {
 		delegateAddress, // lgh: 配置文件的地址
 		market.TokenA, // lgh: AllTokenPairs 的 tokenS
 		market.TokenB, // lgh: AllTokenPairs 的 tokenB
-		// lgh: 目前看来是要取的条数，从数据库中获取订单
+		// lgh: 目前看来 roundOrderCount 是要取的条数，从数据库中获取订单
 		market.matcher.roundOrderCount, // 配置文件中的 roundOrderCount，默认是 2
 		market.matcher.reservedTime, // 保留的提交时间，默认是 45，单位未知
 		int64(0),
@@ -218,11 +226,23 @@ func (market *Market) getOrdersForMatching(delegateAddress common.Address) {
 		// deleyedNumber 是开始时候的毫秒数 + 10000，就是多了10秒
 		&types.OrderDelayList{OrderHash: market.AtoBOrderHashesExcludeNextRound, DelayedCount: deleyedNumber})
 
+	// 如果：len(atoBOrders) = 1，market.matcher.roundOrderCount - len(atoBOrders) = 1
 	if len(atoBOrders) < market.matcher.roundOrderCount {
 		orderCount := market.matcher.roundOrderCount - len(atoBOrders)
-		orders := market.om.MinerOrders(delegateAddress, market.TokenA, market.TokenB, orderCount, market.matcher.reservedTime, currentRoundNumber+1, currentRoundNumber+market.matcher.delayedNumber)
+		orders := market.om.MinerOrders(
+			delegateAddress,
+			market.TokenA,
+			market.TokenB,
+			orderCount,  // 1
+			market.matcher.reservedTime, // 45
+			currentRoundNumber+1, // 加了一个毫秒
+			// 因为前一次搜索的是 0 < x <= currentRoundNumber 的订单，发现条数不够，所以现在改为
+			// currentRoundNumber+1 < x <= currentRoundNumber+10s
+			currentRoundNumber+market.matcher.delayedNumber) // 开始时候的毫秒数 + 10000，就是多了10秒
+
 		atoBOrders = append(atoBOrders, orders...)
 	}
+	// lgh: 上面最多就是 orderCount 条。下面的 bToa 是一样的
 
 	btoAOrders := market.om.MinerOrders(delegateAddress, market.TokenB, market.TokenA, market.matcher.roundOrderCount, market.matcher.reservedTime, int64(0), currentRoundNumber, &types.OrderDelayList{OrderHash: market.BtoAOrderHashesExcludeNextRound, DelayedCount: deleyedNumber})
 	if len(btoAOrders) < market.matcher.roundOrderCount {
@@ -236,7 +256,7 @@ func (market *Market) getOrdersForMatching(delegateAddress common.Address) {
 	market.BtoAOrderHashesExcludeNextRound = []common.Hash{}
 
 	for _, order := range atoBOrders {
-		market.reduceRemainedAmountBeforeMatch(order)
+		market.reduceRemainedAmountBeforeMatch(order) // lgh: 目前不知道这个是什么意图
 		if !market.om.IsOrderFullFinished(order) {
 			market.AtoBOrders[order.RawOrder.Hash] = order
 		} else {
@@ -316,12 +336,22 @@ func (market *Market) GenerateCandidateRing(orders ...*types.OrderState) (*Candi
 
 func (market *Market) generateFilledOrder(order *types.OrderState) (*types.FilledOrder, error) {
 
-	lrcTokenBalance, err := market.matcher.GetAccountAvailableAmount(order.RawOrder.Owner, market.protocolImpl.LrcTokenAddress, market.protocolImpl.DelegateAddress)
+	lrcTokenBalance, err :=
+		market.matcher.GetAccountAvailableAmount(
+		order.RawOrder.Owner,
+		market.protocolImpl.LrcTokenAddress,
+		market.protocolImpl.DelegateAddress)
+
 	if nil != err {
 		return nil, err
 	}
 
-	tokenSBalance, err := market.matcher.GetAccountAvailableAmount(order.RawOrder.Owner, order.RawOrder.TokenS, market.protocolImpl.DelegateAddress)
+	tokenSBalance, err :=
+		market.matcher.GetAccountAvailableAmount(
+			order.RawOrder.Owner,
+			order.RawOrder.TokenS,
+			market.protocolImpl.DelegateAddress)
+
 	if nil != err {
 		return nil, err
 	}

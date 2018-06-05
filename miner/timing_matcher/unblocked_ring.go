@@ -101,6 +101,9 @@ func (c ownerCache) save(orderhash common.Hash) error {
 
 func (c ownerCache) orderhashes() ([]common.Hash, error) {
 	hashes := []common.Hash{}
+	// lgh: redis SMembers ,返回集合 key 中的所有成员
+	// key: OwnerPrefix + strings.ToLower(c.owner.Hex()) + strings.ToLower(c.tokenS.Hex())
+	// 猜测返回的是：当前 owner 所有以 tokenS 为 sell 方的订单的 hash 值数组
 	if hashesData, err := cache.SMembers(c.cacheKey()); nil != err {
 		return hashes, err
 	} else {
@@ -139,6 +142,8 @@ func (c orderCache) save(ringhash common.Hash, matchedState *OrderMatchedState) 
 
 func (c orderCache) matchedStates() ([]*OrderMatchedState, error) {
 	states := []*OrderMatchedState{}
+	// lgh: redis.HVals 根据key返回它对应的hash表的值列表，一对多
+	// lgh: 根据当前的订单的 orderhash 去获取
 	if filledData, err := cache.HVals(c.cacheKey()); nil != err {
 		log.Errorf("matchedStates orderhash:%s, err:%s", c.orderhash.Hex(), err.Error())
 		return states, err
@@ -154,6 +159,8 @@ func (c orderCache) matchedStates() ([]*OrderMatchedState, error) {
 	}
 	return states, nil
 }
+
+// lgh: 这是干什么的？
 func (c orderCache) dealtAmount() (dealtAmountS *big.Rat, dealtAmountB *big.Rat, err error) {
 	dealtAmountS = big.NewRat(int64(0), int64(1))
 	dealtAmountB = big.NewRat(int64(0), int64(1))
@@ -162,6 +169,8 @@ func (c orderCache) dealtAmount() (dealtAmountS *big.Rat, dealtAmountB *big.Rat,
 		return dealtAmountS, dealtAmountB, err
 	} else {
 		for _, state := range states {
+			// todo lgh: Add 这个运算目前没看懂为何如此搞
+			// fixed 上面 todo--> rat.add 是相加，a/b.add(a/b,a1/b1) = a/b + a1/b1
 			dealtAmountS.Add(dealtAmountS, state.FilledAmountS.BigRat())
 			dealtAmountB.Add(dealtAmountB, state.FilledAmountB.BigRat())
 		}
@@ -242,13 +251,16 @@ func FilledAmountS(owner, tokenS common.Address) (filledAmountS *big.Rat, err er
 	ownerC.owner = owner
 	ownerC.tokenS = tokenS
 
+	// lgh: orderhashes，猜测返回的是：当前 owner 所有以 tokenS 为 sell 方的订单的 hash 值数组
 	if orderhashes, err := ownerC.orderhashes(); nil != err {
 		return filledAmountS, err
 	} else {
 		for _, hash := range orderhashes {
 			ordC := orderCache{}
 			ordC.orderhash = hash
+			// lgh: todo dealtAmount 是个未知干什么的函数
 			if dealtAmountS, _, err := ordC.dealtAmount(); nil == err {
+				// lgh: rat.add 是相加，a/b.add(a/b,a1/b1) = a/b + a1/b1
 				filledAmountS.Add(filledAmountS, dealtAmountS)
 			} else {
 				log.Errorf("FilledAmount err:%s", err.Error())
@@ -305,5 +317,6 @@ func RingExecuteFailedCount(uniqueId common.Hash) (int64, error) {
 }
 
 func OrderExecuteFailedCount(orderhash common.Hash) (int64, error) {
+	// lgh: redis SCard 命令返回集合中元素的数量。
 	return cache.SCard(FailedOrderPrefix + strings.ToLower(orderhash.Hex()))
 }

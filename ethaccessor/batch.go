@@ -65,7 +65,9 @@ func (reqs BatchBalanceReqs) ToBatchElem() []rpc.BatchElem {
 		} else {
 			balanceOfData, _ := erc20Abi.Pack("balanceOf", req.Owner)
 			balanceOfArg := &CallArg{}
-			balanceOfArg.To = req.Token
+			// lgh: ---②
+			balanceOfArg.To = req.Token // lgh: 根据 lgh: ---① 可以看出，这个是 allToken 中的 token。
+			// lgh: 那么上面可以理解为，目标的要去查询 owner 代币余额的代币地址
 			balanceOfArg.Data = common.ToHex(balanceOfData)
 
 			reqElems[idx] = rpc.BatchElem{
@@ -100,9 +102,13 @@ func (reqs BatchErc20AllowanceReqs) ToBatchElem() []rpc.BatchElem {
 	erc20Abi := accessor.Erc20Abi
 
 	for idx, req := range reqs {
+		// function allowance(address _owner, address _spender) constant returns (uint256 remaining)
+		// spender == market.protocolImpl.DelegateAddress
+		// 查看 Owner 账户还能够调用 DelegateAddress 账户多少个 token ？？具体是什么 token 要到网页查看，猜测是 lrc
 		balanceOfData, _ := erc20Abi.Pack("allowance", req.Owner, req.Spender)
 		balanceOfArg := &CallArg{}
-		balanceOfArg.To = req.Token
+
+		balanceOfArg.To = req.Token // lgh: 根据 lgh: ---② 可知，这里是要去查询 allowance 的代币的地址
 		balanceOfArg.Data = common.ToHex(balanceOfData)
 
 		reqElems[idx] = rpc.BatchElem{

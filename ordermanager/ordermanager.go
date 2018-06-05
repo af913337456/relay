@@ -461,7 +461,7 @@ func (om *OrderManagerImpl) MinerOrders(
 		filterStatus = []types.OrderStatus{types.ORDER_FINISHED, types.ORDER_CUTOFF, types.ORDER_CANCEL}
 	)
 
-	// lgh: filterOrderHashLists 目前的 size 总是 1
+	// lgh: 首次进入 filterOrderHashLists 目前的 size 总是 1
 	for _, orderDelay := range filterOrderHashLists {
 		orderHashes := []string{}
 		for _, hash := range orderDelay.OrderHash {
@@ -469,6 +469,7 @@ func (om *OrderManagerImpl) MinerOrders(
 		}
 		if len(orderHashes) > 0 && orderDelay.DelayedCount != 0 {
 			// lgh: 如果存在要延时的订单，下面去数据库更新它们的 blockNumber，排队号
+			// blockNumber 之前看的一篇文章说，这个要自增，事实用时间戳是最好的，免去判断
 			if err = om.rds.MarkMinerOrders(orderHashes, orderDelay.DelayedCount); err != nil {
 				log.Debugf("order manager,provide orders for miner error:%s", err.Error())
 			}
@@ -477,7 +478,7 @@ func (om *OrderManagerImpl) MinerOrders(
 
 	// 从数据库获取订单
 	if modelList, err = om.rds.GetOrdersForMiner(
-		protocol.Hex(), // 配置文件的
+		protocol.Hex(), // 配置文件的 LoopringProtocolImpl
 		tokenS.Hex(),
 		tokenB.Hex(),
 		length, // 是2

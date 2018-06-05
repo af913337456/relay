@@ -59,6 +59,45 @@ func TestThree(t *testing.T) {
 	// 1528102231806
 }
 
+func TestFour(t *testing.T) {
+	s := big.NewInt(1400)
+	b := big.NewInt(4000)
+	rac1 := new(big.Rat).SetFrac(s, b)
+	fmt.Println(rac1.Num()) // 返回分子 100/4000 = 1/40
+	fmt.Println(rac1.Denom()) // 返回分母
+	fmt.Println(new(big.Int).Div(rac1.Num(), rac1.Denom())) // div 除法，＜1 的返回0
+}
+
+func TestRatAdd(t *testing.T) {
+	rat1 := big.NewRat(int64(5), int64(6))
+	rat2 := big.NewRat(int64(15), int64(16))
+	fmt.Println(rat1)
+	rat1.Add(rat1, rat2) // rat.add 是相加，a/b.add(a/b,a1/b1) = a/b + a1/b1
+	fmt.Println(rat1)
+}
+
+func TestRatSub(t *testing.T) {
+	rat1 := big.NewRat(int64(5), int64(6))
+	rat2 := big.NewRat(int64(15), int64(16))
+	fmt.Println(rat1.Sub(rat1,rat2)) // rat.sub 是相减，a/b.sub(a/b,a1/b1) = a/b - a1/b1
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
