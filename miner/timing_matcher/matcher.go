@@ -188,12 +188,13 @@ func (matcher *TimingMatcher) GetAccountAvailableAmount(address, tokenAddress, s
 			// todo 猜测，以 DelegateAddress 的 allowance 为准。是否在用户每次操作的时候都会设置 allowance ？
 			availableAmount = allowanceAmount
 		}
+		// lgh: redis 设置类的方法现在看不懂的，先当作空值，即是第一次运行处理。方便理解源码
 		matchedAmountS, _ := FilledAmountS(address, tokenAddress)
 		log.Debugf("owner:%s, token:%s, spender:%s, availableAmount:%s, balance:%s, allowance:%s, matchedAmountS:%s", address.Hex(), tokenAddress.Hex(), spender.Hex(), availableAmount.FloatString(2), balance.String(), allowance.String(), matchedAmountS.FloatString(2))
 		// lgh: rat.sub 是相减，a/b.sub(a/b,a1/b1) = a/b - a1/b1
 		availableAmount.Sub(availableAmount, matchedAmountS)
 
-		return availableAmount, nil
+		return availableAmount, nil // 第一次返回的就是 allowance
 	}
 }
 

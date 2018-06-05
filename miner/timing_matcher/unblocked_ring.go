@@ -258,7 +258,7 @@ func FilledAmountS(owner, tokenS common.Address) (filledAmountS *big.Rat, err er
 		for _, hash := range orderhashes {
 			ordC := orderCache{}
 			ordC.orderhash = hash
-			// lgh: todo dealtAmount 是个未知干什么的函数
+			// lgh: todo dealtAmount 是个不知道干什么的函数
 			if dealtAmountS, _, err := ordC.dealtAmount(); nil == err {
 				// lgh: rat.add 是相加，a/b.add(a/b,a1/b1) = a/b + a1/b1
 				filledAmountS.Add(filledAmountS, dealtAmountS)
