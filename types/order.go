@@ -265,6 +265,8 @@ func ConvertOrderStateToFilledOrder(
 	}
 
 	if orderState.RawOrder.TokenB == lrcAddress && lrcBalance.Cmp(filledOrder.AvailableAmountB) < 0 {
+		// 如果要买的是 LRC，且用户的LRC的余额比要买的少，那么设置用户的可用LRC余额为剩下要买的
+		// 要买的代币 = LRC && (用户LRC余额<要买的) => 用户可用LRC余额=要买的
 		filledOrder.AvailableLrcBalance.Set(filledOrder.AvailableAmountB)
 	}
 	return filledOrder
