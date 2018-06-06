@@ -231,17 +231,26 @@ type FilledOrder struct {
 	AvailableTokenSBalance *big.Rat
 }
 
-func ConvertOrderStateToFilledOrder(orderState OrderState, lrcBalance, tokenSBalance *big.Rat, lrcAddress common.Address) *FilledOrder {
+func ConvertOrderStateToFilledOrder(
+	orderState OrderState, lrcBalance, tokenSBalance *big.Rat, lrcAddress common.Address) *FilledOrder {
+
 	filledOrder := &FilledOrder{}
 	filledOrder.OrderState = orderState
 	filledOrder.AvailableLrcBalance = new(big.Rat).Set(lrcBalance)
 	filledOrder.AvailableTokenSBalance = new(big.Rat).Set(tokenSBalance)
 
+	// lgh: 计算当前订单还剩下多少卖的和买的
 	filledOrder.AvailableAmountS, filledOrder.AvailableAmountB = filledOrder.OrderState.RemainedAmount()
+
+	// 原始的比例 RawOrder --> 卖/买
 	sellPrice := new(big.Rat).SetFrac(filledOrder.OrderState.RawOrder.AmountS, filledOrder.OrderState.RawOrder.AmountB)
 
+	// lgh: todo 为什么还要实例化一次 availableBalance？这个等同于  AvailableTokenSBalance
 	availableBalance := new(big.Rat).Set(filledOrder.AvailableTokenSBalance)
-	if availableBalance.Cmp(filledOrder.AvailableAmountS) < 0 {
+
+	// AvailableAmountS 剩下要 sell 卖的。
+	// availableBalance 乘上了汇率后的余额，单位USD
+	if availableBalance.Cmp(filledOrder.AvailableAmountS) < 0 { // lgh: todo 比较的意义是？
 		filledOrder.AvailableAmountS = availableBalance
 		filledOrder.AvailableAmountB.Mul(filledOrder.AvailableAmountS, new(big.Rat).Inv(sellPrice))
 	}
@@ -351,24 +360,39 @@ func (ord *OrderState) ResolveStatus(allowance, balance *big.Int) {
 //	return side
 //}
 
+// lgh: Remained 留下来。这个方法就是用来计算当前订单还剩下多少卖的和买的
 func (orderState *OrderState) RemainedAmount() (remainedAmountS *big.Rat, remainedAmountB *big.Rat) {
 	remainedAmountS = new(big.Rat)
 	remainedAmountB = new(big.Rat)
 	if orderState.RawOrder.BuyNoMoreThanAmountB {
 		reducedAmountB := new(big.Rat)
-		reducedAmountB.Add(reducedAmountB, new(big.Rat).SetInt(orderState.DealtAmountB)).
+		reducedAmountB.
+			// lgh: DealtAmountB 已经处理了的，已经取消了的 CancelledAmountB，已经拆分了的 SplitAmountB
+			Add(reducedAmountB, new(big.Rat).SetInt(orderState.DealtAmountB)).
 			Add(reducedAmountB, new(big.Rat).SetInt(orderState.CancelledAmountB)).
 			Add(reducedAmountB, new(big.Rat).SetInt(orderState.SplitAmountB))
+
 		sellPrice := new(big.Rat).SetFrac(orderState.RawOrder.AmountS, orderState.RawOrder.AmountB)
-		remainedAmountB.Sub(new(big.Rat).SetInt(orderState.RawOrder.AmountB), reducedAmountB)
-		remainedAmountS.Mul(remainedAmountB, sellPrice)
+		remainedAmountB.
+			Sub( // 减法  AmountB - reducedAmountB = AmountB - 0
+				new(big.Rat).SetInt(orderState.RawOrder.AmountB),
+				reducedAmountB) // reducedAmountB 首次是0
+		// remainedAmountB = AmountB
+		remainedAmountS.Mul(remainedAmountB, sellPrice) // AmountB * (卖的/买的) = 剩下要卖的 remainedAmountS。
 	} else {
 		reducedAmountS := new(big.Rat)
-		reducedAmountS.Add(reducedAmountS, new(big.Rat).SetInt(orderState.DealtAmountS)).
+		reducedAmountS.
+			Add(reducedAmountS, new(big.Rat).SetInt(orderState.DealtAmountS)).
 			Add(reducedAmountS, new(big.Rat).SetInt(orderState.CancelledAmountS)).
 			Add(reducedAmountS, new(big.Rat).SetInt(orderState.SplitAmountS))
+
 		buyPrice := new(big.Rat).SetFrac(orderState.RawOrder.AmountB, orderState.RawOrder.AmountS)
-		remainedAmountS.Sub(new(big.Rat).SetInt(orderState.RawOrder.AmountS), reducedAmountS)
+
+		remainedAmountS.
+			Sub(
+				new(big.Rat).SetInt(orderState.RawOrder.AmountS),
+				reducedAmountS)
+
 		remainedAmountB.Mul(remainedAmountS, buyPrice)
 	}
 

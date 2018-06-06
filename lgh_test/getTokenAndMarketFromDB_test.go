@@ -13,6 +13,9 @@ import (
 	"github.com/Loopring/relay/txmanager"
 	"github.com/Loopring/relay/cache"
 	"github.com/Loopring/relay/dao"
+	"io/ioutil"
+	"net/http"
+	"math/big"
 )
 var (
 	SupportTokens  map[string]types.Token // token symbol to entity
@@ -23,7 +26,7 @@ var (
 	SymbolTokenMap map[common.Address]string
 )
 
-func TestName(t *testing.T) {
+func TestName2(t *testing.T) {
 
 	SupportTokens := make(map[string]types.Token)
 	SupportMarkets := make(map[string]types.Token)
@@ -80,7 +83,45 @@ func TestAA(t *testing.T) {
 	ethaccessor.Initialize(c.Accessor, c.Common, AllTokens["WETH"].Protocol)
 }
 
+func TestMinValue(t *testing.T) {
+	c := config.LoadConfig("../config/relay.toml")
+	log.Initialize(c.Log)
+	minValue := big.NewInt(c.OrderManager.DustOrderValue) // 1 USD
+	minRat := new(big.Rat).SetInt(minValue)
+	fmt.Println(minRat)
+}
 
+func TestSyncMarket(t *testing.T) {
+	url := fmt.Sprintf("https://api.coinmarketcap.com/v1/ticker/?limit=0&convert=%s", "USD")
+	resp, err := http.Get(url) // lgh: 进行第三方货币数据接口请求，下面再解析然后初始化好所有的货币信息，含价格等信息
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer func() {
+		if nil != resp && nil != resp.Body {
+			resp.Body.Close()
+		}
+	}()
+	body, err := ioutil.ReadAll(resp.Body)
+	fmt.Println(string(body))
+	if nil != err {
+		fmt.Println(err)
+		return
+	} else {
+		var caps []*types.CurrencyMarketCap
+		if err := json.Unmarshal(body, &caps); nil != err {
+			fmt.Println(err)
+			return
+		} else {
+			for _, tokenCap := range caps {
+				// "price_usd":"123627328208529/8796093022208"
+				//data,_ := json.Marshal(tokenCap)
+				fmt.Println("price_usd",tokenCap.PriceUsd)
+			}
+		}
+	}
+}
 
 
 

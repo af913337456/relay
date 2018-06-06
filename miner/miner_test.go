@@ -156,10 +156,10 @@ func TestMiner_PrepareOrders(t *testing.T) {
 	db.Prepare()
 	// set order and marshal to json
 	//protocol := common.HexToAddress(c.Common.ProtocolImpl.Address[test.Version])
-	lrcFee1 := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5)) // 20个lrc
+	lrcFee1 := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5)) // 5个lrc
 	for i := 0; i < 20; i++ {
 
-		// 卖出0.1个eth， 买入300个lrc,lrcFee为20个lrc
+		// 卖出0.1个eth， 买入1000个lrc,lrcFee为20个lrc
 		amountS1, _ := new(big.Int).SetString("10"+suffix, 0)
 		amountB1, _ := new(big.Int).SetString("1000"+suffix, 0)
 		lrcFee1.Add(lrcFee1, big.NewInt(int64(1)))

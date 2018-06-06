@@ -11,6 +11,7 @@ import (
 	"github.com/Loopring/relay/log"
 	"github.com/Loopring/relay/cache"
 	"time"
+	"encoding/json"
 )
 
 func TestMul(t *testing.T) {
@@ -80,11 +81,91 @@ func TestRatSub(t *testing.T) {
 	rat1 := big.NewRat(int64(5), int64(6))
 	rat2 := big.NewRat(int64(15), int64(16))
 	fmt.Println(rat1.Sub(rat1,rat2)) // rat.sub 是相减，a/b.sub(a/b,a1/b1) = a/b - a1/b1
+
+	v := new(big.Rat).SetInt(big.NewInt(21))
+	m := new(big.Rat).SetInt(big.NewInt(18))
+	v.Quo(m, v) // 效果是 m/v
+	fmt.Println(v)
+
 }
 
+func TestQuo(t *testing.T)  {
+	/*
+	{
+        "id": "bitcoin",
+        "name": "Bitcoin",
+        "symbol": "BTC",
+        "rank": "1",
+        "price_usd": "7635.3",
+        "price_btc": "1.0",
+        "24h_volume_usd": "4707920000.0",
+        "market_cap_usd": "130396607812",
+        "available_supply": "17078125.0",
+        "total_supply": "17078125.0",
+        "max_supply": "21000000.0",
+        "percent_change_1h": "0.15",
+        "percent_change_24h": "2.63",
+        "percent_change_7d": "1.57",
+        "last_updated": "1528269274"
+    }
+	*/
+	// v.Quo(amount, v)
+	// v.Mul(price, v)
+	p1 := new(big.Rat).SetInt(big.NewInt(549755813888))
+	p2 := new(big.Rat).SetInt(big.NewInt(4197852931476685))
+	price := p2.Quo(p2,p1)
+	fmt.Println(price)
 
+	p3 := new(big.Rat).Set(price)
+	fmt.Println("price",p3)
 
+	v := new(big.Rat).SetInt(big.NewInt(1000000000000000000)) // 小数位
+	amount := new(big.Rat).SetInt(big.NewInt(2)) // 2 个
+	v.Quo(amount, v) // 余额/小数位 * 当前一个的汇率
+	v.Mul(price, v)
+	fmt.Println(isValueDusted(v))
+}
 
+func isValueDusted(value *big.Rat) bool {
+	// lgh: dustOrderValue 是最小的标准值，单位基于配置文件中而定，同时它也是配置文件中设置的。目前默认是 1
+	minValue := big.NewInt(1) // 1 USD
+	minRat := new(big.Rat).SetInt(minValue)
+	if value == nil || value.Cmp(minRat) > 0 {
+		return false
+	}
+
+	return true
+}
+
+func TestCmp(t *testing.T) {
+	v := new(big.Rat).SetInt(big.NewInt(50))
+	d := new(big.Rat).SetInt(big.NewInt(100000000000000))
+	v.Quo(d,v) // d/v
+	fmt.Println(v)
+	m := new(big.Rat).SetInt(big.NewInt(1))
+	// 21/1  18/1
+	fmt.Println(v.Cmp(m))
+}
+
+func TestJsonRat(t *testing.T) {
+	type CurrencyMarketCap struct {
+		PriceUsd     *big.Int       `json:"price_usd"`
+	}
+	v := new(big.Rat).SetInt(big.NewInt(549755813888))
+	d := new(big.Rat).SetInt(big.NewInt(4197852931476685))
+	fmt.Println(v.Quo(d,v).Float64())
+	caps := CurrencyMarketCap{}
+	body := []byte("{\"price_usd\":17}")
+	if err := json.Unmarshal(body, &caps); nil != err {
+		fmt.Println(err)
+	} else {
+		fmt.Println(caps)
+	}
+}
+
+func TestMinValue(t *testing.T) {
+
+}
 
 
 

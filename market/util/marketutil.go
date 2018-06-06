@@ -133,7 +133,7 @@ func getTokenAndMarketFromDB(tokenfile string) (
 
 	for _, v := range list {
 		if v.Deny == false {
-			t := v.convert()
+			t := v.convert() // lgh: 这里面把 Decimals 做了补0 操作，18 的变成 10^18 后的字符串
 			if t.IsMarket == true {
 				supportMarkets[t.Symbol] = t
 			} else {
@@ -223,7 +223,7 @@ func GetTokenAndMarketFromDB_test(tokenfile string) (
 
 	for _, v := range list {
 		if v.Deny == false {
-			t := v.convert()
+			t := v.convert() // lgh: 这里面把 Decimals 做了补0 操作，18 的变成 10^18 后的字符串
 			if t.IsMarket == true {
 				supportMarkets[t.Symbol] = t
 			} else {

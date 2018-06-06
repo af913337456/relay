@@ -336,6 +336,7 @@ func (market *Market) GenerateCandidateRing(orders ...*types.OrderState) (*Candi
 
 func (market *Market) generateFilledOrder(order *types.OrderState) (*types.FilledOrder, error) {
 
+	// lgh: 获取用户的 lrc 代币余额
 	lrcTokenBalance, err :=
 		market.matcher.GetAccountAvailableAmount(
 		order.RawOrder.Owner,
@@ -346,6 +347,7 @@ func (market *Market) generateFilledOrder(order *types.OrderState) (*types.Fille
 		return nil, err
 	}
 
+	// lgh: 获取用户的 tokenS 代币余额
 	tokenSBalance, err :=
 		market.matcher.GetAccountAvailableAmount(
 			order.RawOrder.Owner,
@@ -356,13 +358,19 @@ func (market *Market) generateFilledOrder(order *types.OrderState) (*types.Fille
 		return nil, err
 	}
 	if tokenSBalance.Sign() <= 0 {
+		// lgh: rag.Sign 函数是用来判断 x 的
 		return nil, fmt.Errorf("owner:%s token:%s balance or allowance is zero", order.RawOrder.Owner.Hex(), order.RawOrder.TokenS.Hex())
 	}
 	//todo:
 	if market.om.IsValueDusted(order.RawOrder.TokenS, tokenSBalance) {
 		return nil, fmt.Errorf("owner:%s token:%s balance or allowance is not enough", order.RawOrder.Owner.Hex(), order.RawOrder.TokenS.Hex())
 	}
-	return types.ConvertOrderStateToFilledOrder(*order, lrcTokenBalance, tokenSBalance, market.protocolImpl.LrcTokenAddress), nil
+	return types.ConvertOrderStateToFilledOrder(
+		*order,
+		lrcTokenBalance,
+		tokenSBalance,
+		market.protocolImpl.LrcTokenAddress),
+		nil
 }
 
 func (market *Market) generateRingSubmitInfo(orders ...*types.OrderState) (*types.RingSubmitInfo, error) {

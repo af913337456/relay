@@ -193,7 +193,9 @@ type CapProvider_CoinMarketCap struct {
 	stopChan        chan bool
 }
 
+// lgh: 获取数量乘上汇率后的真实的价格，单位基于 currencyStr
 func (p *CapProvider_CoinMarketCap) LegalCurrencyValue(tokenAddress common.Address, amount *big.Rat) (*big.Rat, error) {
+	// lgh: currency = "USD"，价格基础单位
 	return p.LegalCurrencyValueByCurrency(tokenAddress, amount, p.currency)
 }
 
@@ -203,14 +205,21 @@ func (p *CapProvider_CoinMarketCap) LegalCurrencyValueOfEth(amount *big.Rat) (*b
 }
 
 func (p *CapProvider_CoinMarketCap) LegalCurrencyValueByCurrency(tokenAddress common.Address, amount *big.Rat, currencyStr string) (*big.Rat, error) {
+	// lgh: 下面先判断当前的代币是否有市场支持。也是和 AllTokens 相关
 	if c, exists := p.tokenMarketCaps[tokenAddress]; !exists {
 		return nil, errors.New("not found tokenCap:" + tokenAddress.Hex())
 	} else {
-		v := new(big.Rat).SetInt(c.Decimals)
-		v.Quo(amount, v)
+		// lgh: Decimals 是做了补 0 后的形式。配置文件中它是18，现在就是 1000000000000000000
+		v := new(big.Rat).SetInt(c.Decimals) // v 的分母总是 1
+
+		// lgh: amount 本身是很大的，根据 miner_test.go 的 suffix 可以看出，amount / 18 后，必然很大 ----③
+		v.Quo(amount, v) // 效果是 v = amount/v，因为真实的代币值要除去它对应的智能协议本身的Decimals
+
+		// lgh: 下面的函数是去获取 tokenAddress 代币相对于 currencyStr = USD 的汇率。
+		// lgh: currencyStr 在配置文件中设置，默认是 USD。结果返回的就是，‘一个代币 = 多少USD’
 		price, _ := p.GetMarketCapByCurrency(tokenAddress, currencyStr)
-		//log.Debugf("LegalCurrencyValueByCurrency token:%s,decimals:%s, amount:%s, currency:%s, price:%s", tokenAddress.Hex(), c.Decimals.String(), amount.FloatString(2), currencyStr, price.FloatString(2) )
-		v.Mul(price, v)
+
+		v.Mul(price, v) // lgh: 数量乘上汇率，得出真实的价格，单位基于 currencyStr 即是 USD
 		return v, nil
 	}
 }
@@ -225,24 +234,27 @@ func (p *CapProvider_CoinMarketCap) GetEthCap() (*big.Rat, error) {
 
 func (p *CapProvider_CoinMarketCap) GetMarketCapByCurrency(tokenAddress common.Address, currencyStr string) (*big.Rat, error) {
 	currency := StringToLegalCurrency(currencyStr)
+	// lgh: 该函数主要返回当初去三方接口同步的对应钱币单位的汇率。一个币 = 多少
 	if c, exists := p.tokenMarketCaps[tokenAddress]; exists {
+		// lgh: c 是对应当前代币的市值信息结构体
 		var v *big.Rat
 		switch currency {
 		case CNY:
-			v = c.PriceCny
+			v = c.PriceCny // lgh: todo https://api.coinmarketcap.com/v1/ticker/ 接口已经不返回人民币的对应价值了
 		case USD:
 			v = c.PriceUsd
 		case BTC:
 			v = c.PriceBtc
 		}
 		if "VITE" == c.Symbol || "ARP" == c.Symbol {
+			// VITE 或 ARP 的就转为 WETH
 			wethCap, _ := p.GetMarketCapByCurrency(util.AllTokens["WETH"].Protocol, currencyStr)
-			v = wethCap.Mul(wethCap, util.AllTokens[c.Symbol].IcoPrice)
+			v = wethCap.Mul(wethCap, util.AllTokens[c.Symbol].IcoPrice) // 又进行了一次稀释，乘上 IcoPrice
 		}
 		if v == nil {
 			return nil, errors.New("tokenCap is nil")
 		} else {
-			return new(big.Rat).Set(v), nil
+			return new(big.Rat).Set(v), nil // lgh: 返回汇率，例如一个 BTC = 7621.63 USD
 		}
 	} else {
 		err := errors.New("not found tokenCap:" + tokenAddress.Hex())

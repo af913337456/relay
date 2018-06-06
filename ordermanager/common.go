@@ -144,8 +144,10 @@ func isOrderCancelled(state *types.OrderState, mc marketcap.MarketCapProvider) b
 }
 
 func isValueDusted(value *big.Rat) bool {
-	minValue := big.NewInt(dustOrderValue)
-	if value == nil || value.Cmp(new(big.Rat).SetInt(minValue)) > 0 {
+	// lgh: dustOrderValue 是最小的标准值，单位基于配置文件中而定，同时它也是配置文件中设置的。目前默认是 1
+	minValue := big.NewInt(dustOrderValue) // 1 USD
+	minRat := new(big.Rat).SetInt(minValue)
+	if value == nil || value.Cmp(minRat) > 0 {
 		return false
 	}
 

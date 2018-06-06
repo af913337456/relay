@@ -181,8 +181,8 @@ func (matcher *TimingMatcher) GetAccountAvailableAmount(address, tokenAddress, s
 		matcher.accountManager.GetBalanceAndAllowance(address, tokenAddress, spender); nil != err {
 		return nil, err
 	} else {
-		availableAmount := new(big.Rat).SetInt(balance)
-		allowanceAmount := new(big.Rat).SetInt(allowance)
+		availableAmount := new(big.Rat).SetInt(balance)     // 分母是 1
+		allowanceAmount := new(big.Rat).SetInt(allowance)	// 分母是 1
 		if availableAmount.Cmp(allowanceAmount) > 0 {
 			// 如果 balance > allowance , balance = allowance
 			// todo 猜测，以 DelegateAddress 的 allowance 为准。是否在用户每次操作的时候都会设置 allowance ？

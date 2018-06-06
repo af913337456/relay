@@ -9,6 +9,7 @@ import (
 
 	"github.com/Loopring/relay/crypto"
 	"github.com/ethereum/go-ethereum/common"
+	"fmt"
 )
 
 var _ = (*orderMarshaling)(nil)
@@ -71,6 +72,7 @@ func (o Order) MarshalJSON() ([]byte, error) {
 }
 
 func (o *Order) UnmarshalJSON(input []byte) error {
+	fmt.Println("自定义 订单 json 解析")
 	type Order struct {
 		Protocol              *common.Address             `json:"protocol" gencodec:"required"`
 		DelegateAddress       *common.Address             `json:"delegateAddress" gencodec:"required"`
