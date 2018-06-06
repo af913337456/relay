@@ -140,6 +140,9 @@ func isValueDusted(value *big.Rat) bool {
 func TestCmp(t *testing.T) {
 	v := new(big.Rat).SetInt(big.NewInt(50))
 	d := new(big.Rat).SetInt(big.NewInt(100000000000000))
+
+	fmt.Println(new(big.Rat).Inv(d))
+
 	v.Quo(d,v) // d/v
 	fmt.Println(v)
 	m := new(big.Rat).SetInt(big.NewInt(1))

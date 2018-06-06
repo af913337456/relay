@@ -362,13 +362,14 @@ func (market *Market) generateFilledOrder(order *types.OrderState) (*types.Fille
 		return nil, fmt.Errorf("owner:%s token:%s balance or allowance is zero", order.RawOrder.Owner.Hex(), order.RawOrder.TokenS.Hex())
 	}
 	//todo:
+	// lgh: tokenSBalance 并没有在 IsValueDusted 内部被修改
 	if market.om.IsValueDusted(order.RawOrder.TokenS, tokenSBalance) {
 		return nil, fmt.Errorf("owner:%s token:%s balance or allowance is not enough", order.RawOrder.Owner.Hex(), order.RawOrder.TokenS.Hex())
 	}
 	return types.ConvertOrderStateToFilledOrder(
 		*order,
 		lrcTokenBalance,
-		tokenSBalance,
+		tokenSBalance, // 所以这里应该不是乘上汇率后的值
 		market.protocolImpl.LrcTokenAddress),
 		nil
 }

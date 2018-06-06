@@ -248,10 +248,14 @@ func ConvertOrderStateToFilledOrder(
 	// lgh: todo 为什么还要实例化一次 availableBalance？这个等同于  AvailableTokenSBalance
 	availableBalance := new(big.Rat).Set(filledOrder.AvailableTokenSBalance)
 
-	// AvailableAmountS 剩下要 sell 卖的。
-	// availableBalance 乘上了汇率后的余额，单位USD
-	if availableBalance.Cmp(filledOrder.AvailableAmountS) < 0 { // lgh: todo 比较的意义是？
-		filledOrder.AvailableAmountS = availableBalance
+	// AvailableAmountS 订单里剩下要 sell 卖的。
+	// availableBalance 要卖的代币的余额
+	if availableBalance.Cmp(filledOrder.AvailableAmountS) < 0 {
+		// 余额比订单的要少
+		filledOrder.AvailableAmountS = availableBalance // 订单的变成余额的。因为最多就余额那么多，不能超过
+
+		// Inv 是倒过来。下面再次计算一次剩下要买的
+		// AvailableAmountB = AvailableAmountS * (原始的AmountB / 原始的AmountS)
 		filledOrder.AvailableAmountB.Mul(filledOrder.AvailableAmountS, new(big.Rat).Inv(sellPrice))
 	}
 	if filledOrder.OrderState.RawOrder.BuyNoMoreThanAmountB {
