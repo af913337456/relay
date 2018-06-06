@@ -236,8 +236,8 @@ func ConvertOrderStateToFilledOrder(
 
 	filledOrder := &FilledOrder{}
 	filledOrder.OrderState = orderState
-	filledOrder.AvailableLrcBalance = new(big.Rat).Set(lrcBalance)
-	filledOrder.AvailableTokenSBalance = new(big.Rat).Set(tokenSBalance)
+	filledOrder.AvailableLrcBalance = new(big.Rat).Set(lrcBalance) // 分母是1
+	filledOrder.AvailableTokenSBalance = new(big.Rat).Set(tokenSBalance) // 分母是1
 
 	// lgh: 计算当前订单还剩下多少卖的和买的
 	filledOrder.AvailableAmountS, filledOrder.AvailableAmountB = filledOrder.OrderState.RemainedAmount()
@@ -251,14 +251,21 @@ func ConvertOrderStateToFilledOrder(
 	// AvailableAmountS 订单里剩下要 sell 卖的。
 	// availableBalance 要卖的代币的余额
 	if availableBalance.Cmp(filledOrder.AvailableAmountS) < 0 {
-		// 余额比订单的要少
+		// 自己的余额比自己当前订单的要少
 		filledOrder.AvailableAmountS = availableBalance // 订单的变成余额的。因为最多就余额那么多，不能超过
 
 		// Inv 是倒过来。下面再次计算一次剩下要买的
-		// AvailableAmountB = AvailableAmountS * (原始的AmountB / 原始的AmountS)
+		// AvailableAmountB = (AvailableAmountS * (原始的AmountB / 原始的AmountS))
+		// 假设 (原始的AmountB / 原始的AmountS) = 10 ETH/3000 USD，卖 300 USD 买一个 ETH
+		// AvailableAmountS = 500，订单里剩下要卖 500 USD
+		// 那么剩下要买的(ETH AvailableAmountB) = 剩下要卖的(USD AvailableAmountS)* (1/300)，这是对的
+		// AvailableAmountB/AvailableAmountS = 原始的AmountB / 原始的AmountS
+		// ==> AvailableAmountB = AvailableAmountS*(原始的AmountB / 原始的AmountS)
 		filledOrder.AvailableAmountB.Mul(filledOrder.AvailableAmountS, new(big.Rat).Inv(sellPrice))
 	}
 	if filledOrder.OrderState.RawOrder.BuyNoMoreThanAmountB {
+		// AvailableAmountS/AvailableAmountB = (原始的AmountS / 原始的AmountB)
+		// AvailableAmountS = AvailableAmountB * (原始的AmountS / 原始的AmountB)
 		filledOrder.AvailableAmountS.Mul(filledOrder.AvailableAmountB, sellPrice)
 	} else {
 		filledOrder.AvailableAmountB.Mul(filledOrder.AvailableAmountS, new(big.Rat).Inv(sellPrice))
