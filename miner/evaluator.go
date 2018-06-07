@@ -86,6 +86,7 @@ func ReducedRate(ringState *types.Ring) *big.Rat {
 }
 
 // lgh: 从 GenerateCandidateRing 进入的情况，那么 ringState 里面的 order size == 2
+// lgh: 此方法要结合 zh_whitepaper.pdf 白皮书的 订单缩减 公式一起理解
 func (e *Evaluator) ComputeRing(ringState *types.Ring) error {
 
 	if len(ringState.Orders) <= 1 {
@@ -148,6 +149,7 @@ func (e *Evaluator) ComputeRing(ringState *types.Ring) error {
 
 		filledOrder.FillAmountS = new(big.Rat)
 		if lastOrder != nil && lastOrder.FillAmountB.Cmp(filledOrder.AvailableAmountS) >= 0 {
+			// 稿纸上的 3
 			// lastOrder.FillAmountB.Cmp(filledOrder.AvailableAmountS) 这句体现的是， (上一个订单的剩下的买量>当前订单的卖量)
 			//当前订单为最小订单
 			filledOrder.FillAmountS.Set(filledOrder.AvailableAmountS) // 当前订单的卖量 设置为 FillAmountS
@@ -157,6 +159,7 @@ func (e *Evaluator) ComputeRing(ringState *types.Ring) error {
 			// 首次设置为 AvailableAmountS 剩下的卖量
 			filledOrder.FillAmountS.Set(filledOrder.AvailableAmountS)
 		} else {
+			// 稿纸上的 4
 			// 进入这个 else (上一个订单的剩下的买量 < 当前订单的卖量)
 			// 上一订单为最小订单，需要对remainAmountS进行折扣计算
 			filledOrder.FillAmountS.Set(lastOrder.FillAmountB) // 上一个订单的剩下的买量 设置为 FillAmountS
@@ -183,11 +186,13 @@ func (e *Evaluator) ComputeRing(ringState *types.Ring) error {
 		order := ringState.Orders[i]
 		var nextOrder *types.FilledOrder
 		nextOrder = ringState.Orders[i+1]
+
 		order.FillAmountB = nextOrder.FillAmountS
 		order.FillAmountS.Mul(order.FillAmountB, order.SPrice)
 	}
-
-	for i := minVolumeIdx + 1; i < len(ringState.Orders); i++ {
+	// lgh: len(ringState.Orders) 提到外边，不用每次读一次 len
+	orderLen := len(ringState.Orders)
+	for i := minVolumeIdx + 1; i < orderLen; i++ {
 		order := ringState.Orders[i]
 		var lastOrder *types.FilledOrder
 		lastOrder = ringState.Orders[i-1]
