@@ -44,8 +44,11 @@ type Evaluator struct {
 	matcher Matcher
 }
 
+// lgh: 从 GenerateCandidateRing 进入 ComputeRing 的情况，那么 ringState 里面的 order size == 2
+// lgh: 计算折合率。环中所有订单的: 1/[(所有订单卖的乘积/所有订单买的乘积)^(1/订单数)]
 func ReducedRate(ringState *types.Ring) *big.Rat {
-	productAmountS := big.NewRat(int64(1), int64(1))
+
+	productAmountS := big.NewRat(int64(1), int64(1)) // 初始化是 1/1 = 1
 	productAmountB := big.NewRat(int64(1), int64(1))
 
 	//compute price
@@ -53,47 +56,66 @@ func ReducedRate(ringState *types.Ring) *big.Rat {
 		amountS := new(big.Rat).SetInt(order.OrderState.RawOrder.AmountS)
 		amountB := new(big.Rat).SetInt(order.OrderState.RawOrder.AmountB)
 
+		// lgh: 因为一个 ring 可以有多个 订单，所以这里是累乘，第一次是 amountS 和 amountB
+		// 第二次是 (a->b.amountS * b-a>.amountS) 和 (a->b.amountB * b-a>.amountB)
 		productAmountS.Mul(productAmountS, amountS)
 		productAmountB.Mul(productAmountB, amountB)
 
 		order.SPrice = new(big.Rat)
-		order.SPrice.Quo(amountS, amountB)
+		order.SPrice.Quo(amountS, amountB) // 原始卖的 / 原始买的
 
 		order.BPrice = new(big.Rat)
-		order.BPrice.Quo(amountB, amountS)
+		order.BPrice.Quo(amountB, amountS) // 原始买的 / 原始卖的
 	}
 
+	// lgh: 由上面的分析，我们可以肯定，productAmountS 是 Orders 的所有卖的量的 乘积。同理 productAmountB 也是如此
+	// lgh: 那么 productPrice 就是 Orders 的 (所有卖的量/所有买的量)。类似平均价
 	productPrice := new(big.Rat)
 	productPrice.Quo(productAmountS, productAmountB)
+
 	//todo:change pow to big.Int
-	priceOfFloat, _ := productPrice.Float64()
+	priceOfFloat, _ := productPrice.Float64() // productPrice 转为浮点数的形式
+	// math.Pow -> 返回 x 的 y 次幂的值。 priceOfFloat^(1/float64(len(ringState.Orders))) 事实以订单数开方
 	rootOfRing := math.Pow(priceOfFloat, 1/float64(len(ringState.Orders)))
 	rate := new(big.Rat).SetFloat64(rootOfRing)
 	reducedRate := new(big.Rat)
-	reducedRate.Inv(rate)
+	reducedRate.Inv(rate) // todo 为何要翻转一次？
 	log.Debugf("Miner,rate:%s, priceFloat:%f , len:%d, rootOfRing:%f, reducedRate:%s ", rate.FloatString(2), priceOfFloat, len(ringState.Orders), rootOfRing, reducedRate.FloatString(2))
 
 	return reducedRate
 }
 
+// lgh: 从 GenerateCandidateRing 进入的情况，那么 ringState 里面的 order size == 2
 func (e *Evaluator) ComputeRing(ringState *types.Ring) error {
 
 	if len(ringState.Orders) <= 1 {
+		// lgh: 在 Hash 没被赋值的情况，Hash.Hex() 输出的是 0x00000...
 		return fmt.Errorf("length of ringState.Orders must > 1 , ringhash:%s", ringState.Hash.Hex())
 	}
 
+	// lgh: 计算`汇率折价`，它是基于环路订单组计算出的。1/[(所有订单卖的乘积/所有订单买的乘积)^(1/订单数)]
+	// 矿工提交后，LPSC 会验证 `汇率折价`,汇率折价 0<=y<1
 	ringState.ReducedRate = ReducedRate(ringState)
 
 	//todo:get the fee for select the ring of mix income
 	//LRC等比例下降，首先需要计算fillAmountS
 	//分润的fee，首先需要计算fillAmountS，fillAmountS取决于整个环路上的完全匹配的订单
 	//如何计算最小成交量的订单，计算下一次订单的卖出或买入，然后根据比例替换
-	minVolumeIdx := 0
+	minVolumeIdx := 0 // lgh: 最小成交量的订单的下标
 
 	for idx, filledOrder := range ringState.Orders {
-		filledOrder.SPrice.Mul(filledOrder.SPrice, ringState.ReducedRate)
 
+		// lgh: todo 注意！ 每个 order SPrice 和 BPrice 在 ReducedRate 里面已经设置过一次了
+		// lgh: 解决上面的 todo
+		// 原因是：由白皮书可知，SPrice 代表的是当前环路订单的实际交易汇率。为 R(origin)*(汇率折价y)<=(R(origin)=Sell/Buy)
+		filledOrder.SPrice.Mul(filledOrder.SPrice, ringState.ReducedRate)
+		// lgh: todo 为什么 BPrice != (B/S)*ReducedRate = BPrice*ReducedRate
+		// lgh: todo 下面倒置的事实是 1/[(S/B)*ReducedRate]
+		// lgh: 解决上面的 todo s
+		// 原因是: (Sell/Buy)*(Buy/Sell)==1，是恒成立的。而汇率的默认形式就是 (Sell/Buy)，所以在计算出了 SPrice，直接取倒数就是 BPrice
 		filledOrder.BPrice.Inv(filledOrder.SPrice)
+
+		// lgh: 目前看来，SPrice 和 BPrice 对应的含义分别是订单处于当前环路订单组的实际交易汇率 卖/买 和 买/卖
 
 		amountS := new(big.Rat).SetInt(filledOrder.OrderState.RawOrder.AmountS)
 		//amountB := new(big.Rat).SetInt(filledOrder.OrderState.RawOrder.AmountB)
@@ -101,13 +123,19 @@ func (e *Evaluator) ComputeRing(ringState *types.Ring) error {
 		//根据用户设置，判断是以卖还是买为基准
 		//买入不超过amountB
 		filledOrder.RateAmountS = new(big.Rat).Set(amountS)
+		// lgh: 有 RateAmountS 却没有 RateAmountB，猜测这个是 LPSC 验证需要而设置的。是单个订单的原始(Sell量*汇率折价后)的值
 		filledOrder.RateAmountS.Mul(amountS, ringState.ReducedRate)
+
 		//if BuyNoMoreThanAmountB , AvailableAmountS need to be reduced by the ratePrice
 		//recompute availabeAmountS and availableAmountB by the latest price
 		if filledOrder.OrderState.RawOrder.BuyNoMoreThanAmountB {
-			//filledOrder.AvailableAmountS = new(big.Rat)
+			// 不允许买如超过 amountB 个，下面又计算了一次 AvailableAmountS(剩下要购买的量)
+			// AvailableAmountS = 实际交易汇率 * 剩下要买入的量
+			// AvailableAmountS = (Sell/Buy) * y * AvailableAmountB
+			// 可以看出，这里的又一次的计算事实是引入了 实际交易汇率 的情况。
 			filledOrder.AvailableAmountS.Mul(filledOrder.SPrice, filledOrder.AvailableAmountB)
 		} else {
+			// 同上
 			filledOrder.AvailableAmountB.Mul(filledOrder.BPrice, filledOrder.AvailableAmountS)
 		}
 		log.Debugf("orderhash:%s availableAmountS:%s, availableAmountB:%s", filledOrder.OrderState.RawOrder.Hash.Hex(), filledOrder.AvailableAmountS.FloatString(2), filledOrder.AvailableAmountB.FloatString(2))
@@ -120,15 +148,18 @@ func (e *Evaluator) ComputeRing(ringState *types.Ring) error {
 
 		filledOrder.FillAmountS = new(big.Rat)
 		if lastOrder != nil && lastOrder.FillAmountB.Cmp(filledOrder.AvailableAmountS) >= 0 {
+			// lastOrder.FillAmountB.Cmp(filledOrder.AvailableAmountS) 这句体现的是， (上一个订单的剩下的买量>当前订单的卖量)
 			//当前订单为最小订单
-			filledOrder.FillAmountS.Set(filledOrder.AvailableAmountS)
+			filledOrder.FillAmountS.Set(filledOrder.AvailableAmountS) // 当前订单的卖量 设置为 FillAmountS
 			minVolumeIdx = idx
 			//根据minVolumeIdx进行最小交易量的计算,两个方向进行
 		} else if lastOrder == nil {
+			// 首次设置为 AvailableAmountS 剩下的卖量
 			filledOrder.FillAmountS.Set(filledOrder.AvailableAmountS)
 		} else {
-			//上一订单为最小订单需要对remainAmountS进行折扣计算
-			filledOrder.FillAmountS.Set(lastOrder.FillAmountB)
+			// 进入这个 else (上一个订单的剩下的买量 < 当前订单的卖量)
+			// 上一订单为最小订单，需要对remainAmountS进行折扣计算
+			filledOrder.FillAmountS.Set(lastOrder.FillAmountB) // 上一个订单的剩下的买量 设置为 FillAmountS
 		}
 		filledOrder.FillAmountB = new(big.Rat).Mul(filledOrder.FillAmountS, filledOrder.BPrice)
 	}

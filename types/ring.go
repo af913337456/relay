@@ -42,7 +42,7 @@ type NameRegistryInfo struct {
 // 但是，根据谷歌竞拍法则(A出价10,B出价20,最终成交价为10)，撮合者最终获得的利润只能是利润最小的环路利润
 
 type Ring struct {
-	Orders      []*FilledOrder `json:"orderes"`
+	Orders      []*FilledOrder `json:"orderes"` // lgh: 注意这里，这里说明一个 ring 可以有多个订单
 	V           uint8          `json:"v"`
 	R           Bytes32        `json:"r"`
 	S           Bytes32        `json:"s"`

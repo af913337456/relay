@@ -12,6 +12,7 @@ import (
 	"github.com/Loopring/relay/cache"
 	"time"
 	"encoding/json"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 func TestMul(t *testing.T) {
@@ -168,6 +169,19 @@ func TestJsonRat(t *testing.T) {
 
 func TestMinValue(t *testing.T) {
 
+}
+
+func TestRingHash(t *testing.T) {
+	type Ring struct {
+		Hash        common.Hash    `json:"hash"`
+	}
+	ring := Ring{}
+	fmt.Println(ring.Hash.Hex())
+
+	var name *string
+	if name == nil {
+		fmt.Println("null")
+	}
 }
 
 

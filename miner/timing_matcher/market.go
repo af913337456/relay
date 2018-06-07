@@ -309,10 +309,11 @@ func (market *Market) reduceAmountAfterFilled(filledOrder *types.FilledOrder) *t
 	return orderState
 }
 
+// lgh: 撮合的时候，进入这里的 orders 总是 2，且分别是 a->b，b->a
 func (market *Market) GenerateCandidateRing(orders ...*types.OrderState) (*CandidateRing, error) {
 	filledOrders := []*types.FilledOrder{}
 	//miner will received nothing, if miner set FeeSelection=1 and he doesn't have enough lrc
-	for _, order := range orders {
+	for _, order := range orders { // size == 2
 		if filledOrder, err := market.generateFilledOrder(order); nil != err {
 			log.Errorf("err:%s", err.Error())
 			return nil, err
@@ -320,8 +321,11 @@ func (market *Market) GenerateCandidateRing(orders ...*types.OrderState) (*Candi
 			filledOrders = append(filledOrders, filledOrder)
 		}
 	}
-
-	ringTmp := miner.NewRing(filledOrders)
+	if len(filledOrders) <= 0 {
+		return nil,fmt.Errorf("GenerateCandidateRing orders is empty")
+	}
+	ringTmp := miner.NewRing(filledOrders) // 创建一个环
+	// lgh: ComputeRing
 	if err := market.matcher.evaluator.ComputeRing(ringTmp); nil != err {
 		return nil, err
 	} else {
@@ -363,9 +367,11 @@ func (market *Market) generateFilledOrder(order *types.OrderState) (*types.Fille
 	}
 	//todo:
 	// lgh: tokenSBalance 并没有在 IsValueDusted 内部被修改
+	// lgh: IsValueDusted 主要是计算出 tokenSBalance 对应的总市值，即价值多少。再判断它的市值是否合理
 	if market.om.IsValueDusted(order.RawOrder.TokenS, tokenSBalance) {
 		return nil, fmt.Errorf("owner:%s token:%s balance or allowance is not enough", order.RawOrder.Owner.Hex(), order.RawOrder.TokenS.Hex())
 	}
+	// lgh: 下面主要计算出当前订单剩下的要买卖的代币数量
 	return types.ConvertOrderStateToFilledOrder(
 		*order,
 		lrcTokenBalance,

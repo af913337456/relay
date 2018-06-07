@@ -240,7 +240,7 @@ func ConvertOrderStateToFilledOrder(
 	filledOrder.AvailableTokenSBalance = new(big.Rat).Set(tokenSBalance) // 分母是1
 
 	// lgh: 计算当前订单还剩下多少卖的和买的
-	filledOrder.AvailableAmountS, filledOrder.AvailableAmountB = filledOrder.OrderState.RemainedAmount()
+	filledOrder.AvailableAmountS, filledOrder.AvailableAmountB = filledOrder.OrderState.RemainedAmount() //----⑥
 
 	// 原始的比例 RawOrder --> 卖/买
 	sellPrice := new(big.Rat).SetFrac(filledOrder.OrderState.RawOrder.AmountS, filledOrder.OrderState.RawOrder.AmountB)
@@ -250,10 +250,10 @@ func ConvertOrderStateToFilledOrder(
 
 	// AvailableAmountS 订单里剩下要 sell 卖的。
 	// availableBalance 要卖的代币的余额
-	if availableBalance.Cmp(filledOrder.AvailableAmountS) < 0 {
+	if availableBalance.Cmp(filledOrder.AvailableAmountS) < 0 { // ----⑦
 		// 自己的余额比自己当前订单的要少
 		filledOrder.AvailableAmountS = availableBalance // 订单的变成余额的。因为最多就余额那么多，不能超过
-
+		// lgh: 因为上面的 S 变了，所以下面要重新计算一次 B
 		// Inv 是倒过来。下面再次计算一次剩下要买的
 		// AvailableAmountB = (AvailableAmountS * (原始的AmountB / 原始的AmountS))
 		// 假设 (原始的AmountB / 原始的AmountS) = 10 ETH/3000 USD，卖 300 USD 买一个 ETH
@@ -261,18 +261,21 @@ func ConvertOrderStateToFilledOrder(
 		// 那么剩下要买的(ETH AvailableAmountB) = 剩下要卖的(USD AvailableAmountS)* (1/300)，这是对的
 		// AvailableAmountB/AvailableAmountS = 原始的AmountB / 原始的AmountS
 		// ==> AvailableAmountB = AvailableAmountS*(原始的AmountB / 原始的AmountS)
-		filledOrder.AvailableAmountB.Mul(filledOrder.AvailableAmountS, new(big.Rat).Inv(sellPrice))
+		filledOrder.AvailableAmountB.Mul(filledOrder.AvailableAmountS, new(big.Rat).Inv(sellPrice)) // ----⑤
 	}
 	if filledOrder.OrderState.RawOrder.BuyNoMoreThanAmountB {
+		// BuyNoMoreThanAmountB = true ====> 不允许最终成交的TokenB超过AmountB
 		// AvailableAmountS/AvailableAmountB = (原始的AmountS / 原始的AmountB)
 		// AvailableAmountS = AvailableAmountB * (原始的AmountS / 原始的AmountB)
+		// lgh: todo 下面行应该也是多余操作， ----⑥ 已经计算超过一次了，如果进入了上面的 ----⑦ 也无需再计算一次
 		filledOrder.AvailableAmountS.Mul(filledOrder.AvailableAmountB, sellPrice)
 	} else {
+		// lgh: todo 下面这行是多余的操作，完全和 ----⑤ 一样。假设没进入 ----⑦ S 也就没改变，而----⑥ 已经计算超过一次
 		filledOrder.AvailableAmountB.Mul(filledOrder.AvailableAmountS, new(big.Rat).Inv(sellPrice))
 	}
 
 	if orderState.RawOrder.TokenB == lrcAddress && lrcBalance.Cmp(filledOrder.AvailableAmountB) < 0 {
-		// 如果要买的是 LRC，且用户的LRC的余额比要买的少，那么设置用户的可用LRC余额为 剩下要买的
+		// 如果要买的是 LRC，且用户的LRC的余额比剩下要买的少，那么设置用户的可用LRC余额为 剩下要买的
 		// 要买的代币 = LRC && (用户LRC余额<剩下要买的) => 用户可用LRC余额=剩下要买的
 		filledOrder.AvailableLrcBalance.Set(filledOrder.AvailableAmountB)
 	}
@@ -377,16 +380,19 @@ func (ord *OrderState) ResolveStatus(allowance, balance *big.Int) {
 func (orderState *OrderState) RemainedAmount() (remainedAmountS *big.Rat, remainedAmountB *big.Rat) {
 	remainedAmountS = new(big.Rat)
 	remainedAmountB = new(big.Rat)
+	// lgh: BuyNoMoreThanAmountB 在这里影响的是，以谁为基础标准算出另一个。感觉就是一样的
 	if orderState.RawOrder.BuyNoMoreThanAmountB {
+		// (BuyNoMoreThanAmountB = true) ====> 不允许最终成交的TokenB超过AmountB
 		reducedAmountB := new(big.Rat)
 		reducedAmountB.
+			// reducedAmountB 是要减去的总的买量
 			// lgh: DealtAmountB 已经处理了的，已经取消了的 CancelledAmountB，已经拆分了的 SplitAmountB
 			Add(reducedAmountB, new(big.Rat).SetInt(orderState.DealtAmountB)).
 			Add(reducedAmountB, new(big.Rat).SetInt(orderState.CancelledAmountB)).
 			Add(reducedAmountB, new(big.Rat).SetInt(orderState.SplitAmountB))
 
 		sellPrice := new(big.Rat).SetFrac(orderState.RawOrder.AmountS, orderState.RawOrder.AmountB)
-		remainedAmountB.
+		remainedAmountB. // 以买剩多少为标准
 			Sub( // 减法  AmountB - reducedAmountB = AmountB - 0
 				new(big.Rat).SetInt(orderState.RawOrder.AmountB),
 				reducedAmountB) // reducedAmountB 首次是0
@@ -401,11 +407,11 @@ func (orderState *OrderState) RemainedAmount() (remainedAmountS *big.Rat, remain
 
 		buyPrice := new(big.Rat).SetFrac(orderState.RawOrder.AmountB, orderState.RawOrder.AmountS)
 
-		remainedAmountS.
+		remainedAmountS. // 以卖剩多少为标准
 			Sub(
 				new(big.Rat).SetInt(orderState.RawOrder.AmountS),
 				reducedAmountS)
-
+		// remainedAmountB = remainedAmountS*(买的/卖的)
 		remainedAmountB.Mul(remainedAmountS, buyPrice)
 	}
 

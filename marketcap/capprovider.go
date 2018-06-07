@@ -194,6 +194,7 @@ type CapProvider_CoinMarketCap struct {
 }
 
 // lgh: 获取数量乘上汇率后的真实的价格，单位基于 currencyStr
+// 撮合的情况，amount 是要卖的币的余额
 func (p *CapProvider_CoinMarketCap) LegalCurrencyValue(tokenAddress common.Address, amount *big.Rat) (*big.Rat, error) {
 	// lgh: currency = "USD"，价格基础单位
 	return p.LegalCurrencyValueByCurrency(tokenAddress, amount, p.currency)
@@ -204,6 +205,7 @@ func (p *CapProvider_CoinMarketCap) LegalCurrencyValueOfEth(amount *big.Rat) (*b
 	return p.LegalCurrencyValueByCurrency(tokenAddress, amount, p.currency)
 }
 
+// lgh: 计算出 amount 对应的总市值，即价值多少
 func (p *CapProvider_CoinMarketCap) LegalCurrencyValueByCurrency(tokenAddress common.Address, amount *big.Rat, currencyStr string) (*big.Rat, error) {
 	// lgh: 下面先判断当前的代币是否有市场支持。也是和 AllTokens 相关
 	if c, exists := p.tokenMarketCaps[tokenAddress]; !exists {

@@ -414,7 +414,7 @@ func (om *OrderManagerImpl) IsOrderFullFinished(state *types.OrderState) bool {
 }
 
 // order.RawOrder.TokenS
-// value 是余额，不是客户端传过来的
+// value 是要卖的币的余额，不是客户端传过来的
 func (om *OrderManagerImpl) IsValueDusted(tokenAddress common.Address, value *big.Rat) bool {
 	// lgh: 获取数量乘上汇率后的真实的价格，单位基于 currencyStr
 	if legalValue, err := om.mc.LegalCurrencyValue(tokenAddress, value); nil != err {
