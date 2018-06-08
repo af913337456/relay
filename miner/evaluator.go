@@ -311,27 +311,37 @@ func (e *Evaluator) computeFeeOfRingAndOrder(ringState *types.Ring) error {
 					filledOrder.FillAmountS,
 					new(big.Rat).SetInt(filledOrder.OrderState.RawOrder.AmountS))
 
-		filledOrder.LrcFee = new(big.Rat).SetInt(filledOrder.OrderState.RawOrder.LrcFee)
-		filledOrder.LrcFee.Mul(filledOrder.LrcFee, rate)
+		filledOrder.LrcFee = new(big.Rat).SetInt(filledOrder.OrderState.RawOrder.LrcFee) // 先设置为订单中带过来的手续费
+		filledOrder.LrcFee.Mul(filledOrder.LrcFee, rate) // 根据上面的比例来计算具体要付的手续费
 
+		// 在 order.go 的 AvailableLrcBalance 方法中初始化 ConvertOrderStateToFilledOrder
+		// 如果要买的 TokenB 是 Lrc，那么 AvailableLrcBalance 和 availableB 一样，就是剩下要买的 。
+		// 否则就是用户的 lrc 余额
+		// 下面是和手续费比较
 		if filledOrder.AvailableLrcBalance.Cmp(filledOrder.LrcFee) <= 0 {
+			// <= 手续费，那么手续费改为 AvailableLrcBalance。
+			// 这里不用担心，LrcFee 会变得很大，因为上面计算的时候是根据 “订单中带过来的手续费”
+			// 如果 AvailableLrcBalance <= LrcFee，那么下面的赋值只会更小
 			filledOrder.LrcFee = filledOrder.AvailableLrcBalance
 		}
 
+		// 计算出手续费的实际价格 legalAmountOfLrc
 		legalAmountOfLrc, err1 := e.getLegalCurrency(lrcAddress, filledOrder.LrcFee)
 		if nil != err1 {
 			return err1
 		}
 
 		filledOrder.LegalLrcFee = legalAmountOfLrc
-		splitPer := new(big.Rat)
-		if filledOrder.OrderState.RawOrder.MarginSplitPercentage > 100 {
-			splitPer.SetFrac64(int64(100), int64(100))
+		splitPer := new(big.Rat) // 比例的百分比分数形式
+		// MarginSplitPercentage 分润比例
+		if filledOrder.OrderState.RawOrder.MarginSplitPercentage > 100 { // 100%
+			splitPer.SetFrac64(int64(100), int64(100)) // 1
 		} else {
+			// MarginSplitPercentage / 100
 			splitPer.SetFrac64(int64(filledOrder.OrderState.RawOrder.MarginSplitPercentage), int64(100))
 		}
-		legalAmountOfSaving.Mul(legalAmountOfSaving, splitPer)
-		filledOrder.LegalFeeS = legalAmountOfSaving
+		legalAmountOfSaving.Mul(legalAmountOfSaving, splitPer) // 差价的价值 * 比例
+		filledOrder.LegalFeeS = legalAmountOfSaving // 这个时候才赋值差价真实的市值钱数
 		log.Debugf("orderhash:%s, raw.lrc:%s, AvailableLrcBalance:%s, lrcFee:%s, feeS:%s, legalAmountOfLrc:%s,  legalAmountOfSaving:%s, minerLrcAvailable:%s",
 			filledOrder.OrderState.RawOrder.Hash.Hex(),
 			filledOrder.OrderState.RawOrder.LrcFee.String(),
@@ -341,7 +351,7 @@ func (e *Evaluator) computeFeeOfRingAndOrder(ringState *types.Ring) error {
 			legalAmountOfLrc.FloatString(2), legalAmountOfSaving.FloatString(2), feeReceiptLrcAvailableAmount.FloatString(2))
 
 		lrcFee := new(big.Rat).SetInt(big.NewInt(int64(2)))
-		lrcFee.Mul(lrcFee, filledOrder.LegalLrcFee)
+		lrcFee.Mul(lrcFee, filledOrder.LegalLrcFee) // 20% 的分润钱数
 		if lrcFee.Cmp(filledOrder.LegalFeeS) < 0 && feeReceiptLrcAvailableAmount.Cmp(filledOrder.LrcFee) > 0 {
 			filledOrder.FeeSelection = 1
 			filledOrder.LegalFeeS.Sub(filledOrder.LegalFeeS, filledOrder.LegalLrcFee)

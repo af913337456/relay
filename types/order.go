@@ -219,7 +219,7 @@ type FilledOrder struct {
 	FillAmountB      *big.Rat   `json:"fillAmountB"` //计算需要
 	LrcReward        *big.Rat   `json:"lrcReward"`
 
-	LrcFee           *big.Rat   `json:"lrcFee"` // 需要支付的 Lrc 值
+	LrcFee           *big.Rat   `json:"lrcFee"` // 需要支付的 Lrc 值，支付给矿工
 	LegalLrcFee      *big.Rat   `json:"legalLrcFee"` // 需要支付的 Lrc 换算成法币有多少￥，就是USD的价值
 
 	FeeS             *big.Rat   `json:"feeS"`   // 差价 值
