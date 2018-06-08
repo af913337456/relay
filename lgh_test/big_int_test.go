@@ -184,6 +184,12 @@ func TestRingHash(t *testing.T) {
 	}
 }
 
+func TestQud(t *testing.T) {
+	rat1 := big.NewRat(int64(5), int64(6))
+	// 5/6 * 1/10 = 1/12
+	rate := new(big.Rat).Quo(rat1, new(big.Rat).SetInt(big.NewInt(10)))
+	fmt.Println(rate) // 1/12
+}
 
 
 

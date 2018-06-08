@@ -218,11 +218,17 @@ type FilledOrder struct {
 	FillAmountS      *big.Rat   `json:"fillAmountS"`
 	FillAmountB      *big.Rat   `json:"fillAmountB"` //计算需要
 	LrcReward        *big.Rat   `json:"lrcReward"`
-	LrcFee           *big.Rat   `json:"lrcFee"`
-	LegalLrcFee      *big.Rat   `json:"legalLrcFee"`
-	FeeS             *big.Rat   `json:"feeS"`
-	LegalFeeS        *big.Rat   `json:"legalFeeS"`
-	LegalFee         *big.Rat   `json:"legalFee"` //法币计算的fee
+
+	LrcFee           *big.Rat   `json:"lrcFee"` // 需要支付的 Lrc 值
+	LegalLrcFee      *big.Rat   `json:"legalLrcFee"` // 需要支付的 Lrc 换算成法币有多少￥，就是USD的价值
+
+	FeeS             *big.Rat   `json:"feeS"`   // 差价 值
+	LegalFeeS        *big.Rat   `json:"legalFeeS"` // 差价 法币有多少￥，就是USD的价值
+
+	// LegalFee 是根据fees以及lrcfee计算出最终的法币金额
+	// 简单说，LegalFee 是根据LegalLrcFee和LegalFeeS 选出的一个最大的
+	// 其实是比较啰嗦的，为了方便记录和日志debug
+	LegalFee         *big.Rat   `json:"legalFee"`  //法币计算的fee，是最终选择的法币金额
 
 	SPrice *big.Rat `json:"SPrice"`
 	BPrice *big.Rat `json:"BPrice"`

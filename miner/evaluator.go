@@ -37,15 +37,13 @@ type Evaluator struct {
 	rateRatioCVSThreshold     int64  // lgh: 汇率比率系数阈值
 	gasUsedWithLength         map[int]*big.Int
 	realCostRate, walletSplit *big.Rat
-
 	minGasPrice, maxGasPrice *big.Int
-	feeReceipt               common.Address
-
+	feeReceipt               common.Address // lgh: 当前矿工的收益地址
 	matcher Matcher
 }
 
 // lgh: 从 GenerateCandidateRing 进入 ComputeRing 的情况，那么 ringState 里面的 order size == 2
-// lgh: 计算折合率。环中所有订单的: 1/[(所有订单卖的乘积/所有订单买的乘积)^(1/订单数)]
+// lgh: 计算 (1-折价率)。环中所有订单的: 1/[(所有订单卖的乘积/所有订单买的乘积)^(1/订单数)]
 func ReducedRate(ringState *types.Ring) *big.Rat {
 
 	productAmountS := big.NewRat(int64(1), int64(1)) // 初始化是 1/1 = 1
@@ -82,7 +80,7 @@ func ReducedRate(ringState *types.Ring) *big.Rat {
 	reducedRate.Inv(rate) // todo 为何要翻转一次？
 	log.Debugf("Miner,rate:%s, priceFloat:%f , len:%d, rootOfRing:%f, reducedRate:%s ", rate.FloatString(2), priceOfFloat, len(ringState.Orders), rootOfRing, reducedRate.FloatString(2))
 
-	return reducedRate
+	return reducedRate // lgh: 返回的没有 1-
 }
 
 // lgh: 从 GenerateCandidateRing 进入的情况，那么 ringState 里面的 order size == 2
@@ -130,13 +128,15 @@ func (e *Evaluator) ComputeRing(ringState *types.Ring) error {
 		//if BuyNoMoreThanAmountB , AvailableAmountS need to be reduced by the ratePrice
 		//recompute availabeAmountS and availableAmountB by the latest price
 		if filledOrder.OrderState.RawOrder.BuyNoMoreThanAmountB {
-			// 不允许买如超过 amountB 个，下面又计算了一次 AvailableAmountS(剩下要购买的量)
+			// 不允许买入超过 amountB 个，下面又计算了一次 AvailableAmountS(剩下要购买的量)
+			// 由买的决定卖的，因为最多不超过买的量
 			// AvailableAmountS = 实际交易汇率 * 剩下要买入的量
 			// AvailableAmountS = (Sell/Buy) * y * AvailableAmountB
 			// 可以看出，这里的又一次的计算事实是引入了 实际交易汇率 的情况。
 			filledOrder.AvailableAmountS.Mul(filledOrder.SPrice, filledOrder.AvailableAmountB)
 		} else {
 			// 同上
+			// 由卖 的决定 买的，因为最多不超过卖的量
 			filledOrder.AvailableAmountB.Mul(filledOrder.BPrice, filledOrder.AvailableAmountS)
 		}
 		log.Debugf("orderhash:%s availableAmountS:%s, availableAmountB:%s", filledOrder.OrderState.RawOrder.Hash.Hex(), filledOrder.AvailableAmountS.FloatString(2), filledOrder.AvailableAmountB.FloatString(2))
@@ -150,20 +150,23 @@ func (e *Evaluator) ComputeRing(ringState *types.Ring) error {
 		filledOrder.FillAmountS = new(big.Rat)
 		if lastOrder != nil && lastOrder.FillAmountB.Cmp(filledOrder.AvailableAmountS) >= 0 {
 			// 稿纸上的 3
-			// lastOrder.FillAmountB.Cmp(filledOrder.AvailableAmountS) 这句体现的是， (上一个订单的剩下的买量>当前订单的卖量)
-			//当前订单为最小订单
+			// FillAmountB 第一次是 0
+			// 上个订单买的 >= 当前订单剩下要卖的。那么当前订单卖出的 设置为 它自己剩下要卖的。因为它满足不了上个订单
+			// 当前订单为最小订单
 			filledOrder.FillAmountS.Set(filledOrder.AvailableAmountS) // 当前订单的卖量 设置为 FillAmountS
 			minVolumeIdx = idx
 			//根据minVolumeIdx进行最小交易量的计算,两个方向进行
 		} else if lastOrder == nil {
-			// 首次设置为 AvailableAmountS 剩下的卖量
+			// 首次设置： 当前订单要卖的 为 当前订单剩下可以卖的
 			filledOrder.FillAmountS.Set(filledOrder.AvailableAmountS)
 		} else {
 			// 稿纸上的 4
-			// 进入这个 else (上一个订单的剩下的买量 < 当前订单的卖量)
+			// 否则： 上个订单买的 < 当前订单剩下要卖的。那么当前订单卖的 设置为 上个订单买的。这样才够卖，当前的能满足上一个的
 			// 上一订单为最小订单，需要对remainAmountS进行折扣计算
-			filledOrder.FillAmountS.Set(lastOrder.FillAmountB) // 上一个订单的剩下的买量 设置为 FillAmountS
+			filledOrder.FillAmountS.Set(lastOrder.FillAmountB) // 上个订单买的为当前订单卖的
 		}
+		// 每次的循环之后，设置当前订单的 FillAmountB = AvailableAmountS * BPrice
+		// FillAmountB = AvailableAmountS * (B/S*ReducedRate)
 		filledOrder.FillAmountB = new(big.Rat).Mul(filledOrder.FillAmountS, filledOrder.BPrice)
 	}
 
@@ -181,13 +184,14 @@ func (e *Evaluator) ComputeRing(ringState *types.Ring) error {
 	//	}
 	//}
 
+	// lgh: 上个订单的卖出为下一个订单的买入。下面的循环是再循环一次。根据上面已经预处理了一次的情况
 	for i := minVolumeIdx - 1; i >= 0; i-- {
 		//按照前面的，同步减少交易量
 		order := ringState.Orders[i]
 		var nextOrder *types.FilledOrder
 		nextOrder = ringState.Orders[i+1]
 
-		order.FillAmountB = nextOrder.FillAmountS
+		order.FillAmountB = nextOrder.FillAmountS // 上一个买的是下一个卖的，nextOrder 是下一个
 		order.FillAmountS.Mul(order.FillAmountB, order.SPrice)
 	}
 	// lgh: len(ringState.Orders) 提到外边，不用每次读一次 len
@@ -196,7 +200,7 @@ func (e *Evaluator) ComputeRing(ringState *types.Ring) error {
 		order := ringState.Orders[i]
 		var lastOrder *types.FilledOrder
 		lastOrder = ringState.Orders[i-1]
-		order.FillAmountS = lastOrder.FillAmountB
+		order.FillAmountS = lastOrder.FillAmountB // 上一个买的是下一个卖的，lastOrder 是上一个
 		order.FillAmountB.Mul(order.FillAmountS, order.BPrice)
 	}
 
@@ -223,6 +227,7 @@ func (e *Evaluator) ComputeRing(ringState *types.Ring) error {
 
 }
 
+// lgh: 这部分对于白皮书的 费用模式
 func (e *Evaluator) computeFeeOfRingAndOrder(ringState *types.Ring) error {
 
 	var err error
@@ -231,43 +236,81 @@ func (e *Evaluator) computeFeeOfRingAndOrder(ringState *types.Ring) error {
 	if impl, exists := ethaccessor.ProtocolAddresses()[ringState.Orders[0].OrderState.RawOrder.Protocol]; exists {
 		var err error
 		lrcAddress = impl.LrcTokenAddress
-		//todo:the address transfer lrcreward should be msg.sender not feeReceipt
-		if feeReceiptLrcAvailableAmount, err = e.matcher.GetAccountAvailableAmount(e.feeReceipt, lrcAddress, impl.DelegateAddress); nil != err {
+		//todo:the address transfer lrcReward should be msg.sender not feeReceipt
+		if feeReceiptLrcAvailableAmount, err =
+			// lgh: 获取 e.feeReceipt 当前矿工收益地址 的 lrc 余额
+			e.matcher.GetAccountAvailableAmount(e.feeReceipt, lrcAddress, impl.DelegateAddress); nil != err {
 			return err
 		}
 	} else {
 		return errors.New("not support this protocol: " + ringState.Orders[0].OrderState.RawOrder.Protocol.Hex())
 	}
 
-	ringState.LegalFee = big.NewRat(int64(0), int64(1))
+	ringState.LegalFee = big.NewRat(int64(0), int64(1)) // lgh: 初始化是0
 	for _, filledOrder := range ringState.Orders {
+		// 开始遍历所有订单
 		legalAmountOfSaving := new(big.Rat)
 		if filledOrder.OrderState.RawOrder.BuyNoMoreThanAmountB {
 			amountS := new(big.Rat).SetInt(filledOrder.OrderState.RawOrder.AmountS)
 			amountB := new(big.Rat).SetInt(filledOrder.OrderState.RawOrder.AmountB)
 			sPrice := new(big.Rat)
-			sPrice.Quo(amountS, amountB)
+			sPrice.Quo(amountS, amountB) // 原始的汇率
 			savingAmount := new(big.Rat)
-			savingAmount.Mul(filledOrder.FillAmountB, sPrice)
+			// 使用原始的汇率(AmountS/AmountB) 乘上 实际汇率得出的要买的数量(FillAmountB) = savingAmount
+			// 因为：实际汇率是 <= 原始汇率的，所以 savingAmount >= FillAmountS
+			savingAmount.Mul(filledOrder.FillAmountB, sPrice) // 由 买的 决定 卖的
+			// 再减去 根据实际汇率得出的要卖的 FillAmountS。看到这里 savingAmount 类似作差？
 			savingAmount.Sub(savingAmount, filledOrder.FillAmountS)
-			filledOrder.FeeS = savingAmount
+			filledOrder.FeeS = savingAmount // 计算出差价
+
+			// 下面基于 TokenS 的市值计算出 FeeS 价值多少 USD(单位在配置文件控制)
 			legalAmountOfSaving, err = e.getLegalCurrency(filledOrder.OrderState.RawOrder.TokenS, filledOrder.FeeS)
 			if nil != err {
 				return err
 			}
 		} else {
-			savingAmount := new(big.Rat).Set(filledOrder.FillAmountB)
-			savingAmount.Mul(savingAmount, ringState.ReducedRate)
+			// 下面 BuyNoMoreThanAmountB = false 的情况
+			savingAmount := new(big.Rat)
+			// 折价汇率 y = 1-1/[math.pow(r1,r2,r3,3)]
+			// ringState.ReducedRate 是 折价汇率，为什么此时 savingAmount = FillAmountB * 折价汇率 呢？
+			savingAmount.Mul(filledOrder.FillAmountB, ringState.ReducedRate)
+			// reduceDrate = 1-y
+			// 连起来就是： savingAmount = FillAmountB * (1-reduceDrate)
+			// ==> savingAmount = FillAmountB * y , savingAmount 是折价的数量
+			// lgh: todo 解释为什么是 savingAmount = FillAmountB * (1-reduceDrate)
+			/**
+				算差价量，首先要计算出真实的卖量
+				FillAmountS/FillAmountB = (amountS/amountB) * reducedRate
+				FillAmountS = FillAmountB * (amountS/amountB)*reducedRate
+				以原先的兑换率，计算出，原先可以买的量
+				amountB‘ = FillAmountS * (amountB/amountS)
+				差量
+				savingAmount = FillAmountB - amountB‘，公式带入后，就是
+				savingAmount = FillAmountB * (1-reducedRate) = FillAmountB - FillAmountS * (amountB/amountS)
+			*/
 			savingAmount.Sub(filledOrder.FillAmountB, savingAmount)
 			filledOrder.FeeS = savingAmount
-			legalAmountOfSaving, err = e.getLegalCurrency(filledOrder.OrderState.RawOrder.TokenB, filledOrder.FeeS)
+			legalAmountOfSaving, err = e.getLegalCurrency(
+				filledOrder.OrderState.RawOrder.TokenB,
+				filledOrder.FeeS)
 			if nil != err {
 				return err
 			}
 		}
 
-		//compute lrcFee
-		rate := new(big.Rat).Quo(filledOrder.FillAmountS, new(big.Rat).SetInt(filledOrder.OrderState.RawOrder.AmountS))
+		// lgh: FeeS 差价总结
+		/*
+			true  => savingAmount = (amountB/amountS) * FillAmountB - FillAmountS
+			false => savingAmount = FillAmountB - (amountS/amountB) * FillAmountS
+		*/
+
+		//compute lrcFee 需要支付的 Lrc 值
+		rate := new(big.Rat).
+				// FillAmountS / AmountS = 真实要卖的比上原来要卖的比例
+				Quo(
+					filledOrder.FillAmountS,
+					new(big.Rat).SetInt(filledOrder.OrderState.RawOrder.AmountS))
+
 		filledOrder.LrcFee = new(big.Rat).SetInt(filledOrder.OrderState.RawOrder.LrcFee)
 		filledOrder.LrcFee.Mul(filledOrder.LrcFee, rate)
 
@@ -316,34 +359,6 @@ func (e *Evaluator) computeFeeOfRingAndOrder(ringState *types.Ring) error {
 	}
 
 	e.evaluateReceived(ringState)
-
-	//legalFee := new(big.Rat).SetInt(big.NewInt(int64(0)))
-	//feeSelections := []uint8{}
-	//legalFees := []*big.Rat{}
-	//lrcRewards := []*big.Rat{}
-	//
-	//for _,filledOrder := range ringState.Orders {
-	//	lrcFee := new(big.Rat).SetInt(big.NewInt(int64(2)))
-	//	lrcFee.Mul(lrcFee, filledOrder.LegalLrcFee)
-	//	log.Debugf("lrcFee:%s, filledOrder.LegalFeeS:%s, minerLrcBalance:%s, filledOrder.LrcFee:%s", lrcFee.FloatString(3), filledOrder.LegalFeeS.FloatString(3), minerLrcBalance.FloatString(3), filledOrder.LrcFee.FloatString(3))
-	//	if lrcFee.Cmp(filledOrder.LegalFeeS) < 0 && minerLrcAvailableAmount.Cmp(filledOrder.LrcFee) > 0 {
-	//		feeSelections = append(feeSelections, 1)
-	//		fee := new(big.Rat).Set(filledOrder.LegalFeeS)
-	//		fee.Sub(fee, filledOrder.LegalLrcFee)
-	//		legalFees = append(legalFees, fee)
-	//		lrcRewards = append(lrcRewards, filledOrder.LegalLrcFee)
-	//		legalFee.Add(legalFee, fee)
-	//
-	//		minerLrcAvailableAmount.Sub(minerLrcAvailableAmount, filledOrder.LrcFee)
-	//		//log.Debugf("Miner,lrcReward:%s  legalFee:%s", lrcReward.FloatString(10), filledOrder.LegalFee.FloatString(10))
-	//	} else {
-	//		feeSelections = append(feeSelections, 0)
-	//		legalFees = append(legalFees, filledOrder.LegalLrcFee)
-	//		lrcRewards = append(lrcRewards, new(big.Rat).SetInt(big.NewInt(int64(0))))
-	//		legalFee.Add(legalFee, filledOrder.LegalLrcFee)
-	//	}
-	//}
-
 	return nil
 }
 
