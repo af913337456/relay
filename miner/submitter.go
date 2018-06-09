@@ -414,6 +414,8 @@ func (submitter *RingSubmitter) GenerateRingSubmitInfo(ringState *types.Ring) (*
 	ringSubmitInfo.Ringhash = ringState.Hash
 
 	protocolAbi := ethaccessor.ProtocolImplAbi() // 由 commonOptions.ProtocolImpl.ImplAbi 初始化
+
+	// lgh: 目前 selectSenderAddress 总是直接返回下标是 0 的提交地址
 	if senderAddress, err := submitter.selectSenderAddress(); nil != err {
 		return ringSubmitInfo, err
 	} else {
@@ -426,9 +428,6 @@ func (submitter *RingSubmitter) GenerateRingSubmitInfo(ringState *types.Ring) (*
 	} else {
 		ringSubmitInfo.ProtocolData = protocolData
 	}
-	//if nil != err {
-	//	return nil, err
-	//}
 	//预先判断是否会提交成功
 	lastTime := ringSubmitInfo.RawRing.ValidSinceTime()
 	if submitter.currentBlockTime > 0 && lastTime <= submitter.currentBlockTime {
@@ -511,100 +510,29 @@ func (submitter *RingSubmitter) availableSenderAddresses() []*NormalSenderAddres
 func (submitter *RingSubmitter) selectSenderAddress() (common.Address, error) {
 	senderAddresses := submitter.availableSenderAddresses()
 	if len(senderAddresses) <= 0 {
+		// lgh: 下面这里不会进入 availableSenderAddresses 做了强制设置
 		return types.NilAddress, errors.New("there isn't an available sender address")
 	} else {
+		// lgh: todo availableSenderAddresses 内部是批量获取，下面却直接返回下标是 0 的，不需要做个散列算法来选择地址？
 		return senderAddresses[0].Address, nil
 	}
 }
 
-//func (submitter *RingSubmitter) computeReceivedAndSelectMiner(ringSubmitInfo *types.RingSubmitInfo) error {
-//	ringState := ringSubmitInfo.RawRing
-//	ringState.LegalFee = new(big.Rat).SetInt(big.NewInt(int64(0)))
-//	ethPrice, _ := submitter.marketCapProvider.GetEthCap()
-//	ethPrice = ethPrice.Quo(ethPrice, new(big.Rat).SetInt(util.AllTokens["WETH"].Decimals))
-//	lrcAddress := ethaccessor.ProtocolAddresses()[ringSubmitInfo.ProtocolAddress].LrcTokenAddress
-//	spenderAddress := ethaccessor.ProtocolAddresses()[ringSubmitInfo.ProtocolAddress].DelegateAddress
-//	useSplit := false
-//	//for _,splitMiner := range submitter.splitMinerAddresses {
-//	//	//todo:optimize it
-//	//	if lrcFee > splitMiner.StartFee || splitFee > splitMiner.StartFee || len(submitter.normalMinerAddresses) <= 0  {
-//	//		useSplit = true
-//	//		ringState.Miner = splitMiner.Address
-//	//		minerLrcBalance, _ := submitter.matcher.GetAccountAvailableAmount(splitMiner.Address, lrcAddress)
-//	//		//the lrcreward should be send to order.owner when miner selects MarginSplit as the selection of fee
-//	//		//be careful！！！ miner will received nothing, if miner set FeeSelection=1 and he doesn't have enough lrc
-//	//
-//	//
-//	//		if ringState.LrcLegalFee.Cmp(ringState.SplitLegalFee) < 0 && minerLrcBalance.Cmp(filledOrder.LrcFee) > 0 {
-//	//			filledOrder.FeeSelection = 1
-//	//			splitPer := new(big.Rat).SetInt64(int64(filledOrder.OrderState.RawOrder.MarginSplitPercentage))
-//	//			legalAmountOfSaving.Mul(legalAmountOfSaving, splitPer)
-//	//			filledOrder.LrcReward = legalAmountOfLrc
-//	//			legalAmountOfSaving.Sub(legalAmountOfSaving, legalAmountOfLrc)
-//	//			filledOrder.LegalFee = legalAmountOfSaving
-//	//
-//	//			minerLrcBalance.Sub(minerLrcBalance, filledOrder.LrcFee)
-//	//			//log.Debugf("Miner,lrcReward:%s  legalFee:%s", lrcReward.FloatString(10), filledOrder.LegalFee.FloatString(10))
-//	//		} else {
-//	//			filledOrder.FeeSelection = 0
-//	//			filledOrder.LegalFee = legalAmountOfLrc
-//	//		}
-//	//
-//	//		ringState.LegalFee.Add(ringState.LegalFee, filledOrder.LegalFee)
-//	//	}
-//	//}
-//	minerAddresses := submitter.availableSenderAddresses()
-//	if !useSplit {
-//		for _, normalMinerAddress := range minerAddresses {
-//			minerLrcBalance, _ := submitter.matcher.GetAccountAvailableAmount(normalMinerAddress.Address, lrcAddress, spenderAddress)
-//			legalFee := new(big.Rat).SetInt(big.NewInt(int64(0)))
-//			feeSelections := []uint8{}
-//			legalFees := []*big.Rat{}
-//			lrcRewards := []*big.Rat{}
-//			for _, filledOrder := range ringState.Orders {
-//				lrcFee := new(big.Rat).SetInt(big.NewInt(int64(2)))
-//				lrcFee.Mul(lrcFee, filledOrder.LegalLrcFee)
-//				log.Debugf("lrcFee:%s, filledOrder.LegalFeeS:%s, minerLrcBalance:%s, filledOrder.LrcFee:%s", lrcFee.FloatString(3), filledOrder.LegalFeeS.FloatString(3), minerLrcBalance.FloatString(3), filledOrder.LrcFee.FloatString(3))
-//				if lrcFee.Cmp(filledOrder.LegalFeeS) < 0 && minerLrcBalance.Cmp(filledOrder.LrcFee) > 0 {
-//					feeSelections = append(feeSelections, 1)
-//					fee := new(big.Rat).Set(filledOrder.LegalFeeS)
-//					fee.Sub(fee, filledOrder.LegalLrcFee)
-//					legalFees = append(legalFees, fee)
-//					lrcRewards = append(lrcRewards, filledOrder.LegalLrcFee)
-//					legalFee.Add(legalFee, fee)
-//
-//					minerLrcBalance.Sub(minerLrcBalance, filledOrder.LrcFee)
-//					//log.Debugf("Miner,lrcReward:%s  legalFee:%s", lrcReward.FloatString(10), filledOrder.LegalFee.FloatString(10))
-//				} else {
-//					feeSelections = append(feeSelections, 0)
-//					legalFees = append(legalFees, filledOrder.LegalLrcFee)
-//					lrcRewards = append(lrcRewards, new(big.Rat).SetInt(big.NewInt(int64(0))))
-//					legalFee.Add(legalFee, filledOrder.LegalLrcFee)
-//				}
-//			}
-//
-//			if ringState.LegalFee.Sign() == 0 || ringState.LegalFee.Cmp(legalFee) < 0 {
-//				ringState.LegalFee = legalFee
-//				ringSubmitInfo.Miner = normalMinerAddress.Address
-//				for idx, filledOrder := range ringState.Orders {
-//					filledOrder.FeeSelection = feeSelections[idx]
-//					filledOrder.LegalFee = legalFees[idx]
-//					filledOrder.LrcReward = lrcRewards[idx]
-//				}
-//
-//				if nil == ringSubmitInfo.ProtocolGasPrice || ringSubmitInfo.ProtocolGasPrice.Cmp(normalMinerAddress.GasPriceLimit) > 0 {
-//					ringSubmitInfo.ProtocolGasPrice = normalMinerAddress.GasPriceLimit
-//				}
-//			}
-//		}
-//	}
-//	//protocolCost := new(big.Int).Mul(ringSubmitInfo.ProtocolGas, ringSubmitInfo.ProtocolGasPrice)
-//	//
-//	//costEth := new(big.Rat).SetInt(protocolCost)
-//	//costLegal, _ := submitter.marketCapProvider.LegalCurrencyValueOfEth(costEth)
-//	//ringSubmitInfo.LegalCost = costLegal
-//	//received := new(big.Rat).Sub(ringState.LegalFee, costLegal)
-//	//ringSubmitInfo.Received = received
-//
-//	return nil
-//}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

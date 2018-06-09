@@ -169,7 +169,7 @@ type RingSubmitInfo struct {
 	RawRing *Ring
 
 	//todo:remove it
-	Miner            common.Address
+	Miner            common.Address // miner 的提交地址
 	ProtocolAddress  common.Address
 	Ringhash         common.Hash
 	OrdersCount      *big.Int
