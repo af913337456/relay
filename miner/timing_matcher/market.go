@@ -78,6 +78,7 @@ func (market *Market) match() {
 					continue
 				} else {
 					if candidateRing.received.Sign() > 0 {
+						// 环矿工的撮合收益 > 0 的才入选候选环
 						candidateRingList = append(candidateRingList, *candidateRing)
 					} else {
 						log.Debugf("timing_matchher, market ringForSubmit received not enough, received:%s, cost:%s ", candidateRing.received.FloatString(0), candidateRing.cost.FloatString(0))
@@ -98,15 +99,18 @@ func (market *Market) match() {
 
 		sort.Sort(list)
 		candidateRing := list[0]
-		list = list[1:]
+		list = list[1:] // 提取一个候选，就从 list 中删除掉
 		orders := []*types.OrderState{}
 		for hash,_ := range candidateRing.filledOrders {
 			if o, exists := market.AtoBOrders[hash]; exists {
+				// 如果当前的订单是 a->b 的
 				orders = append(orders, o)
 			} else {
+				// 否则就是 b->a 的
 				orders = append(orders, market.BtoAOrders[hash])
 			}
 		}
+		// 下面再计算了一次
 		if ringForSubmit, err := market.generateRingSubmitInfo(orders...); nil != err {
 			log.Debugf("generate RingSubmitInfo err:%s", err.Error())
 			continue
@@ -329,10 +333,15 @@ func (market *Market) GenerateCandidateRing(orders ...*types.OrderState) (*Candi
 	if err := market.matcher.evaluator.ComputeRing(ringTmp); nil != err {
 		return nil, err
 	} else {
-		candidateRing := &CandidateRing{cost: ringTmp.LegalCost, received: ringTmp.Received, filledOrders: make(map[common.Hash]*big.Rat)}
+		candidateRing := &CandidateRing{
+			cost: ringTmp.LegalCost, // 当前的环矿工应该承担多少 以太坊的 油费
+			received: ringTmp.Received, // 当前的环矿工最终的收益
+			filledOrders: make(map[common.Hash]*big.Rat)} // 存储每个订单的 hash 值并使之对应到 真实要卖的
+
 		for _, filledOrder := range ringTmp.Orders {
 			log.Debugf("match, orderhash:%s, filledOrder.FilledAmountS:%s", filledOrder.OrderState.RawOrder.Hash.Hex(), filledOrder.FillAmountS.FloatString(3))
-			candidateRing.filledOrders[filledOrder.OrderState.RawOrder.Hash] = filledOrder.FillAmountS
+			// lgh: 做了个赋值 每个订单的 hash 值并使之对应到 真实要卖的
+			candidateRing.filledOrders[filledOrder.OrderState.RawOrder.Hash]= filledOrder.FillAmountS
 		}
 		return candidateRing, nil
 	}
@@ -380,6 +389,7 @@ func (market *Market) generateFilledOrder(order *types.OrderState) (*types.Fille
 		nil
 }
 
+// lgh: 这里面的操作和 GenerateCandidateRing 方法的差不多。最终生成提交环的信息
 func (market *Market) generateRingSubmitInfo(orders ...*types.OrderState) (*types.RingSubmitInfo, error) {
 	filledOrders := []*types.FilledOrder{}
 	//miner will received nothing, if miner set FeeSelection=1 and he doesn't have enough lrc

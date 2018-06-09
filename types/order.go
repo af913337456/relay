@@ -222,7 +222,7 @@ type FilledOrder struct {
 	LrcFee           *big.Rat   `json:"lrcFee"` // 需要支付的 Lrc 值，支付给矿工
 	LegalLrcFee      *big.Rat   `json:"legalLrcFee"` // 需要支付的 Lrc 换算成法币有多少￥，就是USD的价值
 
-	FeeS             *big.Rat   `json:"feeS"`   // 差价 值
+	FeeS             *big.Rat   `json:"feeS"`      // 差价 值
 	LegalFeeS        *big.Rat   `json:"legalFeeS"` // 差价 法币有多少￥，就是USD的价值
 
 	// LegalFee 是根据fees以及lrcfee计算出最终的法币金额

@@ -205,7 +205,7 @@ func (e *Evaluator) ComputeRing(ringState *types.Ring) error {
 	}
 
 	//compute the fee of this ring and orders, and set the feeSelection
-	// lgh: 这里面的函数内部进行了油费的赋值
+	// lgh: 这里面的函数内部进行了各种费用变量的初始化和赋值
 	if err := e.computeFeeOfRingAndOrder(ringState); nil != err {
 		return err
 	}
@@ -215,6 +215,7 @@ func (e *Evaluator) ComputeRing(ringState *types.Ring) error {
 	if nil != err {
 		return err
 	} else {
+		// lgh: 仅仅是做了某种校验
 		if cvs.Int64() <= e.rateRatioCVSThreshold {
 			return nil
 		} else {
@@ -408,6 +409,7 @@ func PriceRateCVSquare(ringState *types.Ring) (*big.Int, error) {
 	scale, _ := new(big.Int).SetString("10000", 0)
 	for _, filledOrder := range ringState.Orders {
 		rawOrder := filledOrder.OrderState.RawOrder
+		// lgh: FloatString(0) 四舍五入 把 除之后的结果转为字符串
 		s1b0, _ := new(big.Int).SetString(filledOrder.RateAmountS.FloatString(0), 10)
 		//s1b0 = s1b0.Mul(s1b0, rawOrder.AmountB)
 
@@ -417,6 +419,8 @@ func PriceRateCVSquare(ringState *types.Ring) (*big.Int, error) {
 			return nil, errors.New("Miner,rateAmountS must less than amountS")
 		}
 		ratio := new(big.Int).Set(scale)
+		// ratio = 10000 * RateAmountS
+		// ratio = ratio / AmountS
 		ratio.Mul(ratio, s1b0).Div(ratio, s0b1)
 		rateRatios = append(rateRatios, ratio)
 	}
@@ -455,7 +459,7 @@ func (e *Evaluator) getLegalCurrency(tokenAddress common.Address, amount *big.Ra
 }
 
 // lgh: 貌似主要是计算给以太坊矿工的gas的多少
-// lgh: 从这里可以看出的算法基础是，根据 ring 的环数是 gas 计算算法决定了 gas 最终的实际价格是多少。而和其它无关
+// lgh: 从这里可以看出的算法基础是: 1,根据 ring 的环数; 2,gas 计算算法决定的 gas 最终的实际价格。此外而和其它无关
 func (e *Evaluator) evaluateReceived(ringState *types.Ring) {
 	ringState.Received = big.NewRat(int64(0), int64(1)) // 0/1 = 0
 	// lgh: 计算油费标准
@@ -472,16 +476,25 @@ func (e *Evaluator) evaluateReceived(ringState *types.Ring) {
 
 	// lgh: all
 	// eth 的小数点是 18，那么 1 ETH = 10^18
-	// 5*10^6 * 10^9 < 5*10^6 * GasPrice < 5*10^6 * 10^11
-	// ==> 5*10^14 < 5*10^6 * GasPrice < 5*10^17
-	// ==> costEth 目前基于默认的配置文件最大是 0.5 个ETH，最小是 5/10^4 ETH
+	// 5*10^5 * 10^9 < 5*10^6 * GasPrice < 5*10^5 * 10^11
+	// ==> 5*10^14 < 5*10^5 * GasPrice < 5*10^16
+	// ==> costEth 目前基于默认的配置文件最大是 0.05 个ETH，最小是 5/10^4 ETH
 	// 下面获取 costEth 基于 eth 的情况下，价值多少 USD
-	ringState.LegalCost, _ = e.marketCapProvider.LegalCurrencyValueOfEth(costEth) // 当前环 LegalCost gas 的实际价格
+	ringState.LegalCost, _ = e.marketCapProvider.LegalCurrencyValueOfEth(costEth) // 当前环 gas 油费的实际价格
+	// 虽然 LegalCost 代表的是油费的价格，但它在加减乘除后的值不能代表是以太坊矿工最后的油费收益。
+	// LegalCost 在改变之前是 == 以太坊油费收益的
 
 	log.Debugf("legalFee:%s, cost:%s, realCostRate:%s, protocolCost:%s, gas:%s, gasPrice:%s", ringState.LegalFee.FloatString(2), ringState.LegalCost.FloatString(2), e.realCostRate.FloatString(2), protocolCost.String(), ringState.Gas.String(), ringState.GasPrice.String())
-	ringState.LegalCost.Mul(ringState.LegalCost, e.realCostRate) // todo 按照配置文件，这个就是 0 了啊
+	// realCostRate 可以理解为外部配置文件可设置控制 LegalCost 的参数
+	ringState.LegalCost.Mul(ringState.LegalCost, e.realCostRate)
 	log.Debugf("legalFee:%s, cost:%s, realCostRate:%s", ringState.LegalFee.FloatString(2), ringState.LegalCost.FloatString(2), e.realCostRate.FloatString(2))
+
+	// 下面： 撮合者当前环的矿工最终的收益 = 当前环的矿工总手续费 - LegalCost，油费从矿工的总的手续费里面扣
 	ringState.Received.Sub(ringState.LegalFee, ringState.LegalCost)
+
+	// LegalCost 的 实际意义是当前的环矿工应该承担多少 以太坊的 油费。LegalCost = 0 的话，就是不需要承担
+
+	// walletSplit 由配置文件决定，walletSplit = 0.8，相当于 0.2 给了 wallet 钱包
 	ringState.Received.Mul(ringState.Received, e.walletSplit)
 	return
 }

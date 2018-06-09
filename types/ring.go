@@ -46,13 +46,12 @@ type Ring struct {
 	V           uint8          `json:"v"`
 	R           Bytes32        `json:"r"`
 	S           Bytes32        `json:"s"`
-	Hash        common.Hash    `json:"hash"`
-	ReducedRate *big.Rat       `json:"reducedRate"` //成环之后，折价比例
-	LegalFee    *big.Rat       `json:"legalFee"`    //法币计算的fee
+	Hash        common.Hash    `json:"hash"`		// 矿工的 撮合收费 地址 hash
+	ReducedRate *big.Rat       `json:"reducedRate"` // 成环之后，折价比例
+	LegalFee    *big.Rat       `json:"legalFee"`    // 环的矿工总的手续费收益
 	UniqueId    common.Hash    `json:"uniquedId"`
 
-	//
-	Received  *big.Rat
+	Received  *big.Rat // lgh: 撮合者当前环的矿工最终的收益
 	LegalCost *big.Rat
 	Gas       *big.Int
 	GasPrice  *big.Int

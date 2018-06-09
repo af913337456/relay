@@ -72,6 +72,7 @@ func NewSubmitter(options config.MinerOptions, dbService dao.RdsService, marketC
 	submitter.minGasLimit = big.NewInt(options.MinGasLimit)
 	if common.IsHexAddress(options.FeeReceipt) {
 		// todo lgh: 提交者的收费人地址？
+		// lgh: 解决上面的 todo FeeReceipt 是矿工的撮合收费地址
 		submitter.feeReceipt = common.HexToAddress(options.FeeReceipt)
 	} else {
 		return submitter, errors.New("miner.feeReceipt must be a address")
@@ -391,29 +392,36 @@ func (submitter *RingSubmitter) submitResult(ringhash, uniqeId, txhash common.Ha
 
 func (submitter *RingSubmitter) GenerateRingSubmitInfo(ringState *types.Ring) (*types.RingSubmitInfo, error) {
 	//todo:change to advice protocolAddress
-	protocolAddress := ringState.Orders[0].OrderState.RawOrder.Protocol
-	var (
-	//signer *types.NameRegistryInfo
-	//err error
-	)
+	protocolAddress := ringState.Orders[0].OrderState.RawOrder.Protocol // 每个订单的这个应该是一样的，所以这里直接取第一个的
+	//var (
+	////signer *types.NameRegistryInfo
+	////err error
+	//)
 
-	ringSubmitInfo := &types.RingSubmitInfo{RawRing: ringState, ProtocolGasPrice: ringState.GasPrice, ProtocolGas: ringState.Gas}
+	ringSubmitInfo := &types.RingSubmitInfo{
+		RawRing: ringState,
+		ProtocolGasPrice: ringState.GasPrice,
+		ProtocolGas: ringState.Gas}
+
 	if types.IsZeroHash(ringState.Hash) {
-		ringState.Hash = ringState.GenerateHash(submitter.feeReceipt)
+		// GenerateHash 地址转 hash
+		ringState.Hash = ringState.GenerateHash(submitter.feeReceipt) // 使用矿工的撮合收费地址初始化该 hash
+		// 矿工可以有多个环提交地址
 	}
 
-	ringSubmitInfo.ProtocolAddress = protocolAddress
-	ringSubmitInfo.OrdersCount = big.NewInt(int64(len(ringState.Orders)))
+	ringSubmitInfo.ProtocolAddress = protocolAddress // 文档提到：Loopring合约地址，伴随着合约升级，地址是不同版本的
+	ringSubmitInfo.OrdersCount = big.NewInt(int64(len(ringState.Orders))) // 订单总数
 	ringSubmitInfo.Ringhash = ringState.Hash
 
-	protocolAbi := ethaccessor.ProtocolImplAbi()
+	protocolAbi := ethaccessor.ProtocolImplAbi() // 由 commonOptions.ProtocolImpl.ImplAbi 初始化
 	if senderAddress, err := submitter.selectSenderAddress(); nil != err {
 		return ringSubmitInfo, err
 	} else {
 		ringSubmitInfo.Miner = senderAddress
 	}
 	//submitter.computeReceivedAndSelectMiner(ringSubmitInfo)
-	if protocolData, err := ethaccessor.GenerateSubmitRingMethodInputsData(ringState, submitter.feeReceipt, protocolAbi); nil != err {
+	if protocolData, err :=
+		ethaccessor.GenerateSubmitRingMethodInputsData(ringState, submitter.feeReceipt, protocolAbi); nil != err {
 		return nil, err
 	} else {
 		ringSubmitInfo.ProtocolData = protocolData
@@ -458,24 +466,43 @@ func (submitter *RingSubmitter) start() {
 	//submitter.listenSubmitRingMethodEvent()
 }
 
+// lgh: 下面这个方法就是所说的 矿工 的环提交地址。具备候选条件
+// lgh: 下面的条件是: 区块等待状态中的数 <= 区块等待状态中的最大数
 func (submitter *RingSubmitter) availableSenderAddresses() []*NormalSenderAddress {
 	senderAddresses := []*NormalSenderAddress{}
 	for _, minerAddress := range submitter.normalMinerAddresses {
+		// 配置文件中 normalMinerAddresses 目前只有一个，可以多个
 		var blockedTxCount, txCount types.Big
 		//todo:change it by event
-		ethaccessor.GetTransactionCount(&blockedTxCount, minerAddress.Address, "latest")
-		ethaccessor.GetTransactionCount(&txCount, minerAddress.Address, "pending")
+
+		// 下面获取当前的提交地址 Address 在以太坊截止目前提交了多少 block 数量
+		ethaccessor.GetTransactionCount(
+			&blockedTxCount,
+			minerAddress.Address, "latest")
+
+		// 下面获取当前的提交地址 Address 在以太坊截止目前提交了多少
+		// 正处于等待被处理的block 数量
+		ethaccessor.GetTransactionCount(
+			&txCount,
+			minerAddress.Address, "pending")
+
 		//submitter.Accessor.Call("latest", &blockedTxCount, "eth_getTransactionCount", minerAddress.Address.Hex(), "latest")
 		//submitter.Accessor.Call("latest", &txCount, "eth_getTransactionCount", minerAddress.Address.Hex(), "pending")
+
 		//todo:check ethbalance
 		pendingCount := big.NewInt(int64(0))
+
+		// 下面 pendingCount = txCount - blockedTxCount，要求 txCount > blockedTxCount
 		pendingCount.Sub(txCount.BigInt(), blockedTxCount.BigInt())
 		if pendingCount.Int64() <= minerAddress.MaxPendingCount {
+			// MaxPendingCount 是区块等待状态中的最大数，在 NewSubmitter 的时候初始化一次
+			// pendingCount <= MaxPendingCount，还没超出范围，添加入发送者地址。这里有可能 0<= MaxPendingCount
 			senderAddresses = append(senderAddresses, minerAddress)
 		}
 	}
-
 	if len(senderAddresses) <= 0 {
+		// lgh todo 是否保持？
+		// lgh: 这里强制设为 第一个，即使它目前提交的 pending block 数 > MaxPendingCount
 		senderAddresses = append(senderAddresses, submitter.normalMinerAddresses[0])
 	}
 	return senderAddresses

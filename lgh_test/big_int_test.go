@@ -206,6 +206,11 @@ func TestGas(t *testing.T) {
 	protocolCost := new(big.Int)
 	protocolCost.Mul(ringStateGas, big.NewInt(1000000000))
 	fmt.Println(protocolCost)
+
+	rat1 := big.NewRat(int64(3), int64(6))
+	fmt.Println(rat1.FloatString(0))
+	s1b0, _ := new(big.Int).SetString(rat1.FloatString(0), 10)
+	fmt.Println(s1b0)
 }
 
 
