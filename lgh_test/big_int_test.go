@@ -189,9 +189,24 @@ func TestQud(t *testing.T) {
 	// 5/6 * 1/10 = 1/12
 	rate := new(big.Rat).Quo(rat1, new(big.Rat).SetInt(big.NewInt(10)))
 	fmt.Println(rate) // 1/12
+	lrcFee := new(big.Rat).SetInt(big.NewInt(int64(2)))
+	fmt.Println(lrcFee)
 }
 
-
+func TestGas(t *testing.T) {
+	gasUsedMap := make(map[int]*big.Int)
+	gasUsedMap[2] = big.NewInt(500000)
+	gasUsedMap[3] = big.NewInt(500000)
+	gasUsedMap[4] = big.NewInt(500000)
+	gasUsedWithLength :=  make(map[int]*big.Int)
+	gasUsedWithLength = gasUsedMap
+	ringStateGas := new(big.Int)
+	ringStateGas.Set(gasUsedWithLength[2])
+	fmt.Println(ringStateGas)
+	protocolCost := new(big.Int)
+	protocolCost.Mul(ringStateGas, big.NewInt(1000000000))
+	fmt.Println(protocolCost)
+}
 
 
 

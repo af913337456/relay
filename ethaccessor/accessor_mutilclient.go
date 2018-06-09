@@ -179,6 +179,7 @@ func (mc *MutilClient) BlockNumber(result interface{}) error {
 		if len(data) > 0 && len(data[0]) > 0 {
 			if r, ok := result.(*types.Big); ok {
 				blockNumber := new(big.Int)
+				// lgh: 先从 redis 赋值最新的
 				blockNumber.SetString(string(data[0]), 0)
 				r.SetInt(blockNumber)
 			} else {
@@ -218,7 +219,7 @@ func (mc *MutilClient) Call(routeParam string, result interface{}, method string
 		err = mc.BlockNumber(result)
 	}
 	if "eth_blockNumber" == method && nil == err {
-		return "", nil
+		return "", nil // lgh: 如果上面从 redis 中取到了就不去以太坊获取了，todo 不会出现是旧的情况吗？
 	} else {
 		rpcClient := mc.bestClient(routeParam)
 		if nil == rpcClient {

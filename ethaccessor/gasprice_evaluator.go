@@ -32,28 +32,39 @@ type GasPriceEvaluator struct {
 	stopChan chan bool
 }
 
+// lgh: all
 func (e *GasPriceEvaluator) GasPrice(minGasPrice, maxGasPrice *big.Int) *big.Int {
 	gasPrice := new(big.Int)
+	// gasPrice 默认是 bestGas 值
 	if nil != e.gasPrice {
 		if nil != maxGasPrice && maxGasPrice.Cmp(e.gasPrice) < 0 {
-			gasPrice.Set(maxGasPrice)
+			// maxGasPrice < 最好
+			gasPrice.Set(maxGasPrice) // maxGasPrice
 		} else if nil != minGasPrice && minGasPrice.Cmp(e.gasPrice) > 0 {
-			gasPrice.Set(minGasPrice)
+			// minGasPrice > 最好 ， 且本身 minGasPrice < maxGasPrice
+			gasPrice.Set(minGasPrice) // minGasPrice
 		} else {
-			gasPrice.Set(e.gasPrice)
+			// minGasPrice < 最好 < maxGasPrice
+			gasPrice.Set(e.gasPrice) // gasPrice
 		}
 	} else {
 		gasPrice.Set(maxGasPrice)
 	}
+	// 上面的模式貌似:
+	// 最好 < minGasPrice < maxGasPrice ==> minGasPrice	==> 设定的最小
+	// minGasPrice < 最好 < maxGasPrice ==> 最好 			==> 中间
+	// minGasPrice < maxGasPrice < 最好 ==> maxGasPrice	==> 设定的最大
 	return gasPrice
 }
 
+// lgh: todo 理解它
 func (e *GasPriceEvaluator) start() {
 	var blockNumber types.Big
+	// lgh: BlockNumber 获取新的一个区块
 	if err := BlockNumber(&blockNumber); nil == err {
 		go func() {
 			number := new(big.Int).Set(blockNumber.BigInt())
-			number.Sub(number, big.NewInt(30))
+			number.Sub(number, big.NewInt(30)) // 为什么要减 30？
 			iterator := NewBlockIterator(number, nil, true, uint64(0))
 			for {
 				select {
@@ -101,8 +112,9 @@ func (prices gasPrices) Less(i, j int) bool {
 	return prices[i].Cmp(prices[j]) > 0
 }
 
+// lgh: 一开始默认的 gas 价格值
 func (prices gasPrices) bestGasPrice() *big.Int {
-	sort.Sort(prices)
+	sort.Sort(prices) // 排序
 	startIdx := 0
 	endIdx := (len(prices) / 3) * 2
 

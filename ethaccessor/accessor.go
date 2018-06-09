@@ -86,7 +86,9 @@ func GetTransactionByHash(result types.CheckNull, txHash string, blockParameter 
 	return fmt.Errorf("no transaction with hash:%s", txHash)
 }
 
+// lgh: 根据最小值和最大值估计 gas 油费标准
 func EstimateGasPrice(minGasPrice, maxGasPrice *big.Int) *big.Int {
+	// lgh: GasPrice 根据一定的算法找出最优的 gas 油费标准
 	return accessor.gasPriceEvaluator.GasPrice(minGasPrice, maxGasPrice)
 }
 

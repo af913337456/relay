@@ -35,7 +35,7 @@ import (
 type Evaluator struct {
 	marketCapProvider         marketcap.MarketCapProvider
 	rateRatioCVSThreshold     int64  // lgh: 汇率比率系数阈值
-	gasUsedWithLength         map[int]*big.Int
+	gasUsedWithLength         map[int]*big.Int // lgh: 成环时候，订单数不同对于的 gas 的乘基准
 	realCostRate, walletSplit *big.Rat
 	minGasPrice, maxGasPrice *big.Int
 	feeReceipt               common.Address // lgh: 当前矿工的收益地址
@@ -227,7 +227,7 @@ func (e *Evaluator) ComputeRing(ringState *types.Ring) error {
 
 }
 
-// lgh: 这部分对于白皮书的 费用模式
+// lgh: 这部分对于白皮书的 费用模式 计算差价和手续费相关
 func (e *Evaluator) computeFeeOfRingAndOrder(ringState *types.Ring) error {
 
 	var err error
@@ -331,7 +331,7 @@ func (e *Evaluator) computeFeeOfRingAndOrder(ringState *types.Ring) error {
 			return err1
 		}
 
-		filledOrder.LegalLrcFee = legalAmountOfLrc
+		filledOrder.LegalLrcFee = legalAmountOfLrc // 手续费的实际价格
 		splitPer := new(big.Rat) // 比例的百分比分数形式
 		// MarginSplitPercentage 分润比例
 		if filledOrder.OrderState.RawOrder.MarginSplitPercentage > 100 { // 100%
@@ -340,9 +340,10 @@ func (e *Evaluator) computeFeeOfRingAndOrder(ringState *types.Ring) error {
 			// MarginSplitPercentage / 100
 			splitPer.SetFrac64(int64(filledOrder.OrderState.RawOrder.MarginSplitPercentage), int64(100))
 		}
-		legalAmountOfSaving.Mul(legalAmountOfSaving, splitPer) // 差价的价值 * 比例
-		filledOrder.LegalFeeS = legalAmountOfSaving // 这个时候才赋值差价真实的市值钱数
-		log.Debugf("orderhash:%s, raw.lrc:%s, AvailableLrcBalance:%s, lrcFee:%s, feeS:%s, legalAmountOfLrc:%s,  legalAmountOfSaving:%s, minerLrcAvailable:%s",
+		legalAmountOfSaving.Mul(legalAmountOfSaving, splitPer) // 差价 FeeS 的价值 * 分润比例
+		filledOrder.LegalFeeS = legalAmountOfSaving // 这个时候才赋值 FeeS 差价真实的市值钱数 = 原FeeS 的价值 * 分润比例
+		log.Debugf(
+			"orderhash:%s, raw.lrc:%s, AvailableLrcBalance:%s, lrcFee:%s, feeS:%s, legalAmountOfLrc:%s,  legalAmountOfSaving:%s, minerLrcAvailable:%s",
 			filledOrder.OrderState.RawOrder.Hash.Hex(),
 			filledOrder.OrderState.RawOrder.LrcFee.String(),
 			filledOrder.AvailableLrcBalance.FloatString(2),
@@ -351,23 +352,45 @@ func (e *Evaluator) computeFeeOfRingAndOrder(ringState *types.Ring) error {
 			legalAmountOfLrc.FloatString(2), legalAmountOfSaving.FloatString(2), feeReceiptLrcAvailableAmount.FloatString(2))
 
 		lrcFee := new(big.Rat).SetInt(big.NewInt(int64(2)))
-		lrcFee.Mul(lrcFee, filledOrder.LegalLrcFee) // 20% 的分润钱数
+		lrcFee.Mul(lrcFee, filledOrder.LegalLrcFee) // lrcFee = 2 * 手续费的实际价格
 		if lrcFee.Cmp(filledOrder.LegalFeeS) < 0 && feeReceiptLrcAvailableAmount.Cmp(filledOrder.LrcFee) > 0 {
+			// (2 * 手续费的实际价格) < FeeS 差价真实的实际价格(原FeeS 的价值 * 分润比例)
+			// && 当前矿工收益地址 的 lrc 余额 > 乘上比例后的手续费LrcFee
+			// if LegalLrcFee == 0 ==> lrcFee == 0 也适合该模式
+			// 白皮书: 分润收入超过2倍 LRx 手续费，矿工便会选取分润模式，向用户支付 LRx 手续费。
 			filledOrder.FeeSelection = 1
+
+			// 下面调整差价实际价格： LegalFeeS = LegalFeeS - LegalLrcFee(手续费的实际价格)
+			// 为什么不会出现负数? 因为 lrcFee = 2*LegalLrcFee 且 lrcFee < LegalFeeS，证明 LegalLrcFee 的两倍都还要比 LegalFeeS 小
 			filledOrder.LegalFeeS.Sub(filledOrder.LegalFeeS, filledOrder.LegalLrcFee)
-			filledOrder.LrcReward = filledOrder.LegalLrcFee
+
+			filledOrder.LrcReward = filledOrder.LegalLrcFee // 给用户的手续费 = LRx 手续费
+
+			// 选取分润模式
+			// 下面： 当前环的矿工总手续费 = 当前环的矿工总手续费 + 当前订单的(原FeeS 的价值 * 分润比例)。累加每个订单的 LegalFeeS 分润价格
 			ringState.LegalFee.Add(ringState.LegalFee, filledOrder.LegalFeeS)
 
+			// 下面:  当前矿工收益地址的lrc 余额 = 当前矿工收益地址的lrc 余额 - 手续费
+			// 因为上面 LrcReward 给了用户手续费，这部分从矿工账户扣，说白了，给用户的是从矿工处扣
+			// lgh: todo 如果 feeReceiptLrcAvailableAmount < 0 是否应该报错?
+			/*
+			lgh: 解答上面 todo
+			todo，报错会发生在LPSC合约，而不是撮合。而如果不够合约就会选择lrc而不是分润，
+			todo miner这边的逻辑只是模拟合约执行计算收益，白皮书的完整逻辑是在合约中实现的
+			*/
 			feeReceiptLrcAvailableAmount.Sub(feeReceiptLrcAvailableAmount, filledOrder.LrcFee)
 			//log.Debugf("Miner,lrcReward:%s  legalFee:%s", lrcReward.FloatString(10), filledOrder.LegalFee.FloatString(10))
 		} else {
-			filledOrder.FeeSelection = 0
-			filledOrder.LegalFeeS = filledOrder.LegalLrcFee
-			filledOrder.LrcReward = new(big.Rat).SetInt(big.NewInt(int64(0)))
+			// 白皮书: 如果分润为 0，矿工选取 LRx 手续费，仍能得到奖励。
+			filledOrder.FeeSelection = 0 // 给用户的手续费 = 0
+			filledOrder.LegalFeeS = filledOrder.LegalLrcFee // 差价价格 = 手续费实际价格
+			filledOrder.LrcReward = new(big.Rat).SetInt(big.NewInt(int64(0))) // 0
+
+			// 下面： 当前环的矿工总手续费 = 当前订单的手续费实际价格 + 当前环的矿工总手续费。累加每个订单的 LegalLrcFee
 			ringState.LegalFee.Add(ringState.LegalFee, filledOrder.LegalLrcFee)
+			// 这里给用户的是 0 ， 就不需要从矿工账户扣
 		}
 	}
-
 	e.evaluateReceived(ringState)
 	return nil
 }
@@ -431,20 +454,32 @@ func (e *Evaluator) getLegalCurrency(tokenAddress common.Address, amount *big.Ra
 	return e.marketCapProvider.LegalCurrencyValue(tokenAddress, amount)
 }
 
+// lgh: 貌似主要是计算给以太坊矿工的gas的多少
+// lgh: 从这里可以看出的算法基础是，根据 ring 的环数是 gas 计算算法决定了 gas 最终的实际价格是多少。而和其它无关
 func (e *Evaluator) evaluateReceived(ringState *types.Ring) {
-	ringState.Received = big.NewRat(int64(0), int64(1))
+	ringState.Received = big.NewRat(int64(0), int64(1)) // 0/1 = 0
+	// lgh: 计算油费标准
 	ringState.GasPrice = ethaccessor.EstimateGasPrice(e.minGasPrice, e.maxGasPrice)
 	//log.Debugf("len(ringState.Orders):%d", len(ringState.Orders))
 	ringState.Gas = new(big.Int)
+
+	// gasUsedWithLength 初始化的时候都是 500000，猜测它的含义是，orders 成环的量导致不同的 gas 不同，目前都是 500000 起乘
 	ringState.Gas.Set(e.gasUsedWithLength[len(ringState.Orders)])
 	protocolCost := new(big.Int)
-	protocolCost.Mul(ringState.Gas, ringState.GasPrice)
+	protocolCost.Mul(ringState.Gas, ringState.GasPrice) // 500000 * GasPrice
 
-	costEth := new(big.Rat).SetInt(protocolCost)
-	ringState.LegalCost, _ = e.marketCapProvider.LegalCurrencyValueOfEth(costEth)
+	costEth := new(big.Rat).SetInt(protocolCost) // costEth = 500000 * GasPrice
+
+	// lgh: all
+	// eth 的小数点是 18，那么 1 ETH = 10^18
+	// 5*10^6 * 10^9 < 5*10^6 * GasPrice < 5*10^6 * 10^11
+	// ==> 5*10^14 < 5*10^6 * GasPrice < 5*10^17
+	// ==> costEth 目前基于默认的配置文件最大是 0.5 个ETH，最小是 5/10^4 ETH
+	// 下面获取 costEth 基于 eth 的情况下，价值多少 USD
+	ringState.LegalCost, _ = e.marketCapProvider.LegalCurrencyValueOfEth(costEth) // 当前环 LegalCost gas 的实际价格
 
 	log.Debugf("legalFee:%s, cost:%s, realCostRate:%s, protocolCost:%s, gas:%s, gasPrice:%s", ringState.LegalFee.FloatString(2), ringState.LegalCost.FloatString(2), e.realCostRate.FloatString(2), protocolCost.String(), ringState.Gas.String(), ringState.GasPrice.String())
-	ringState.LegalCost.Mul(ringState.LegalCost, e.realCostRate)
+	ringState.LegalCost.Mul(ringState.LegalCost, e.realCostRate) // todo 按照配置文件，这个就是 0 了啊
 	log.Debugf("legalFee:%s, cost:%s, realCostRate:%s", ringState.LegalFee.FloatString(2), ringState.LegalCost.FloatString(2), e.realCostRate.FloatString(2))
 	ringState.Received.Sub(ringState.LegalFee, ringState.LegalCost)
 	ringState.Received.Mul(ringState.Received, e.walletSplit)
@@ -454,6 +489,9 @@ func (e *Evaluator) evaluateReceived(ringState *types.Ring) {
 // lgh: 计算费用的实例
 func NewEvaluator(marketCapProvider marketcap.MarketCapProvider, minerOptions config.MinerOptions) *Evaluator {
 	gasUsedMap := make(map[int]*big.Int)
+	// lgh: 下面的 没有 0 和 1 的原因是在 evaluateReceived 函数中取下标的时候，是根据订单数来做下标的
+	// 自然，订单数不能是 0 和 1
+	// 猜测 gasUsedWithLength 的含义是，orders 成环的量导致不同的 gas 不同
 	gasUsedMap[2] = big.NewInt(500000)
 	//todo:confirm this value
 	gasUsedMap[3] = big.NewInt(500000)
@@ -462,10 +500,11 @@ func NewEvaluator(marketCapProvider marketcap.MarketCapProvider, minerOptions co
 		marketCapProvider: marketCapProvider,
 		rateRatioCVSThreshold: minerOptions.RateRatioCVSThreshold,
 		gasUsedWithLength: gasUsedMap}
-	e.realCostRate = new(big.Rat)
-	if int64(minerOptions.Subsidy) >= 1 {
-		e.realCostRate.SetInt64(int64(0))
+	e.realCostRate = new(big.Rat) // gas 最终价格要乘上的比例
+	if int64(minerOptions.Subsidy) >= 1 { // 配置文件是 1.0
+		e.realCostRate.SetInt64(int64(0)) // realCostRate = 0
 	} else {
+		// 1 - Subsidy
 		e.realCostRate.SetFloat64(float64(1.0) - minerOptions.Subsidy)
 	}
 	e.feeReceipt = common.HexToAddress(minerOptions.FeeReceipt)
