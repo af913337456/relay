@@ -286,10 +286,16 @@ func (accessor *ethNodeAccessor) BatchTransactionRecipients(routeParam string, r
 	return nil
 }
 
-func (accessor *ethNodeAccessor) EstimateGas(routeParam string, callData []byte, to common.Address) (gas, gasPrice *big.Int, err error) {
+func (accessor *ethNodeAccessor) EstimateGas(
+	routeParam string,
+	callData []byte,
+	to common.Address) (gas, gasPrice *big.Int, err error) {
+
 	var gasBig, gasPriceBig types.Big
-	if nil == accessor.gasPriceEvaluator.gasPrice || accessor.gasPriceEvaluator.gasPrice.Cmp(big.NewInt(int64(0))) <= 0 {
-		if err = accessor.RetryCall(routeParam, 2, &gasPriceBig, "eth_gasPrice"); nil != err {
+	if nil == accessor.gasPriceEvaluator.gasPrice ||
+		accessor.gasPriceEvaluator.gasPrice.Cmp(big.NewInt(int64(0))) <= 0 {
+		if err = accessor.RetryCall(routeParam, 2, &gasPriceBig, "eth_gasPrice");
+		nil != err {
 			return
 		}
 	} else {
@@ -299,7 +305,8 @@ func (accessor *ethNodeAccessor) EstimateGas(routeParam string, callData []byte,
 	callArg := &CallArg{}
 	callArg.To = to
 	callArg.Data = common.ToHex(callData)
-	callArg.GasPrice = gasPriceBig
+	callArg.GasPrice = gasPriceBig // lgh: wei 单位情况下的 gas
+	// lgh: gasBig 就是当前的 tx 大概需要消耗的 gas 值
 	log.Debugf("EstimateGas gasPrice:%s", gasPriceBig.BigInt().String())
 	if err = accessor.RetryCall(routeParam, 2, &gasBig, "eth_estimateGas", callArg); nil != err {
 		return
@@ -350,22 +357,24 @@ func (accessor *ethNodeAccessor) ContractSendTransactionByData(routeParam string
 	}
 	var txHash string
 	if needPreExe {
+		// lgh: 是否还需要估算一次 gas。目前最后提交环是不再需要
 		if estimagetGas, _, err := EstimateGas(callData, to, "latest"); nil != err {
 			return txHash, err
 		} else {
 			gas = estimagetGas
 		}
 	}
-	nonce := accessor.addressCurrentNonce(sender)
+	nonce := accessor.addressCurrentNonce(sender) // lgh: 矿工的提交地址
 	log.Infof("nonce:%s, gas:%s", nonce.String(), gas.String())
 	if value == nil {
 		value = big.NewInt(0)
 	}
 	//todo:modify it
 	//if gas.Cmp(big.NewInt(int64(350000)))  {
-	gas.SetString("500000", 0)
+	gas.SetString("500000", 0) // lgh: todo 这里居然固定死了一次油费，记得解开
 	//}
-	transaction := ethTypes.NewTransaction(nonce.Uint64(),
+	transaction := ethTypes.NewTransaction(
+		nonce.Uint64(),
 		common.HexToAddress(to.Hex()),
 		value,
 		gas,
@@ -373,6 +382,7 @@ func (accessor *ethNodeAccessor) ContractSendTransactionByData(routeParam string
 		callData)
 	if err := accessor.SignAndSendTransaction(&txHash, sender, transaction); nil != err {
 		//if err.Error() == "nonce too low" {
+		// lgh: 如果提交出错，那么 resetAddressNonce 强制从以太坊获取 nonce 并刷新缓存
 		accessor.resetAddressNonce(sender)
 		nonce = accessor.addressCurrentNonce(sender)
 		transaction = ethTypes.NewTransaction(nonce.Uint64(),
@@ -390,7 +400,7 @@ func (accessor *ethNodeAccessor) ContractSendTransactionByData(routeParam string
 		//}
 	}
 	accessor.addressNextNonce(sender)
-	return txHash, nil
+	return txHash, nil // lgh: 返回交易单的 hash
 }
 
 //gas, gasPrice can be set to nil
@@ -594,12 +604,12 @@ func (accessor *ethNodeAccessor) addressCurrentNonce(address common.Address) *bi
 	if _, exists := accessor.AddressNonce[address]; !exists {
 		var nonce types.Big
 		if err := accessor.RetryCall("pending", 2, &nonce, "eth_getTransactionCount", address.Hex(), "pending"); nil != err {
-			nonce = *(types.NewBigWithInt(0))
+			nonce = *(types.NewBigWithInt(0)) // lgh: 没有就是0
 		}
 		accessor.AddressNonce[address] = nonce.BigInt()
 	}
 	nonce := new(big.Int)
-	nonce.Set(accessor.AddressNonce[address])
+	nonce.Set(accessor.AddressNonce[address]) // lgh: 缓存存在就直接取缓存中的
 	return nonce
 }
 

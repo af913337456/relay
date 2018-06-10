@@ -472,7 +472,7 @@ func (om *OrderManagerImpl) MinerOrders(
 		}
 		if len(orderHashes) > 0 && orderDelay.DelayedCount != 0 {
 			// lgh: 如果存在要延时的订单，下面去数据库更新它们的 blockNumber，排队号
-			// blockNumber 之前看的一篇文章说，这个要自增，事实用时间戳是最好的，免去判断
+			// blockNumber 之前看的一篇文章说，这个要自增
 			if err = om.rds.MarkMinerOrders(orderHashes, orderDelay.DelayedCount); err != nil {
 				log.Debugf("order manager,provide orders for miner error:%s", err.Error())
 			}

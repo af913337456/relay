@@ -49,8 +49,17 @@ const (
 type Order struct {
 	Protocol              common.Address             `json:"protocol" gencodec:"required"`        // 智能合约地址
 	DelegateAddress       common.Address             `json:"delegateAddress" gencodec:"required"` // 智能合约地址
+
+	// lgh: AuthAddr & AuthPrivateKey 是提交订单时，随机成功的公私钥对，AuthAddr用来参与订单的签名，
+	// AuthPrivateKey用来参与提交撮合时环路的签名，目的是为了防止订单或者环路被篡改，同时在点对点订单的场景，
+	// AuthPrivateKey在通过二维码只分享给特定用户的情况下，可以保护订单只被单独用户吃单。
 	AuthAddr              common.Address             `json:"authAddr" gencodec:"required"`        //
 	AuthPrivateKey        crypto.EthPrivateKeyCrypto `json:"authPrivateKey" gencodec:"required"`  //
+
+
+	// lgh: WalletAddress 提供订单的钱包分润地址，通常是钱包或者交易所产品研发团队的钱包地址，
+	// 用来参与订单成功撮合后的利润分成，目前方案是，
+	// 钱包会分取撮合利润的20%，撮合者(Miner)会分取撮合利润的80%。
 	WalletAddress         common.Address             `json:"walletAddress" gencodec:"required"`
 	TokenS                common.Address             `json:"tokenS" gencodec:"required"`     // 卖出erc20代币智能合约地址
 	TokenB                common.Address             `json:"tokenB" gencodec:"required"`     // 买入erc20代币智能合约地址

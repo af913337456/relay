@@ -73,12 +73,14 @@ func (market *Market) match() {
 			// a2BOrder.RawOrder.Owner != b2AOrder.RawOrder.Owner 排除掉，找到自己的情况
 			// lgh: miner.PriceValid 内部就是判断 s/b * s1/b1 >= 1 这里的就是路印成环规则
 			if miner.PriceValid(a2BOrder, b2AOrder) && a2BOrder.RawOrder.Owner != b2AOrder.RawOrder.Owner {
+				// lgh: 下面总是 1 和 1，两订单成一环。按照 总的是 2x2 来看，最多就是 4 环
 				if candidateRing, err := market.GenerateCandidateRing(a2BOrder, b2AOrder); nil != err {
 					log.Errorf("err:%s", err.Error())
 					continue
 				} else {
-					if candidateRing.received.Sign() > 0 {
-						// 环矿工的撮合收益 > 0 的才入选候选环
+					if candidateRing.received.Sign() > 0 { // ----⑪
+						// candidateRing.received 由 ringTmp.Received 初始化，是一样的值
+						// 环矿工的撮合收益 > 0 的才入选候选环。限制条件之一
 						candidateRingList = append(candidateRingList, *candidateRing)
 					} else {
 						log.Debugf("timing_matchher, market ringForSubmit received not enough, received:%s, cost:%s ", candidateRing.received.FloatString(0), candidateRing.cost.FloatString(0))
@@ -110,28 +112,37 @@ func (market *Market) match() {
 				orders = append(orders, market.BtoAOrders[hash])
 			}
 		}
-		// 下面再计算了一次
+		// 下面再计算了一次，生成'提交环'
 		if ringForSubmit, err := market.generateRingSubmitInfo(orders...); nil != err {
 			log.Debugf("generate RingSubmitInfo err:%s", err.Error())
 			continue
 		} else {
-
-			if exists, err := CachedMatchedRing(ringForSubmit.Ringhash); nil != err || exists {
+			// lgh: 由下面两句的初始化来看，ringForSubmit.Ringhash 总是 = 配置文件中的矿工的撮合收费地址的 hash，但是在
+			// ringState.GenerateHash 内部使用了每个订单信息生成的 hash 值来参与生成 唯一 id 来参与生成 ringState.Hash
+			// 所以订单信息不同，ringState.Hash 是不同的
+			// ringSubmitInfo.Ringhash = ringState.Hash
+			// ringState.Hash = ringState.GenerateHash(submitter.feeReceipt)
+			// 第一次是不存在，在下面的 AddMinedRing 会添加记录
+			exists, err := CachedMatchedRing(ringForSubmit.Ringhash)
+			if  nil != err || exists {
 				if nil != err {
 					log.Error(err.Error())
 				} else {
 					log.Errorf("ringhash:%s has been submitted", ringForSubmit.Ringhash.Hex())
 				}
+				// 相同的环不再提交
 				continue
 			}
 
 			uniqueId := ringForSubmit.RawRing.GenerateUniqueId()
+			// 下面检查该环的提交失败次数是否超过限制。todo 按道理，这里不应该再会走入，因为上面做了 exists 的判断
 			if failedCount, err := RingExecuteFailedCount(uniqueId); nil == err && failedCount > market.matcher.maxFailedCount {
 				log.Debugf("ringSubmitInfo.UniqueId:%s , ringhash: %s , has been failed to submit %d times", uniqueId.Hex(), ringForSubmit.Ringhash.Hex(), failedCount)
 				continue
 			}
 
 			//todo:for test, release this limit
+			// lgh: todo 为什么又判断了一次？
 			if ringForSubmit.RawRing.Received.Sign() > 0 {
 				for _, filledOrder := range ringForSubmit.RawRing.Orders {
 					orderState := market.reduceAmountAfterFilled(filledOrder)

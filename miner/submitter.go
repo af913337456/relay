@@ -191,7 +191,7 @@ func (submitter *RingSubmitter) listenNewRings() {
 			//ringSubmitInfoChan <- e
 			if nil != ringInfos {
 				for _, ringState := range ringInfos {
-					txHash, status, err1 := submitter.submitRing(ringState)
+					txHash, status, err1 := submitter.submitRing(ringState) // lgh: 提交到以太坊
 					ringState.SubmitTxHash = txHash
 
 					daoInfo := &dao.RingSubmitInfo{}
@@ -236,10 +236,14 @@ func (submitter *RingSubmitter) submitRing(ringSubmitInfo *types.RingSubmitInfo)
 	if nil == err {
 		txHashStr := "0x"
 		txHashStr, err = ethaccessor.SignAndSendTransaction(
-			ringSubmitInfo.Miner,
-			ringSubmitInfo.ProtocolAddress,
+			// lgh: all
+			ringSubmitInfo.Miner, // sender 就是矿工的提交地址
+			ringSubmitInfo.ProtocolAddress, // to 是路印协议的地址 LPSC，交易交给协议搞，所以下面的 value = nil
 			ringSubmitInfo.ProtocolGas,
-			ringSubmitInfo.ProtocolGasPrice, nil, ringSubmitInfo.ProtocolData, false)
+			ringSubmitInfo.ProtocolGasPrice,
+			nil, // lgh: todo value nil? fix to 见上面
+			ringSubmitInfo.ProtocolData,
+			false)
 		if nil != err {
 			log.Errorf("submitring hash:%s, err:%s", ringSubmitInfo.Ringhash.Hex(), err.Error())
 			status = types.TX_STATUS_FAILED
@@ -410,7 +414,7 @@ func (submitter *RingSubmitter) GenerateRingSubmitInfo(ringState *types.Ring) (*
 	}
 
 	ringSubmitInfo.ProtocolAddress = protocolAddress // 文档提到：Loopring合约地址，伴随着合约升级，地址是不同版本的
-	ringSubmitInfo.OrdersCount = big.NewInt(int64(len(ringState.Orders))) // 订单总数
+	ringSubmitInfo.OrdersCount = big.NewInt(int64(len(ringState.Orders))) // 环中订单总数
 	ringSubmitInfo.Ringhash = ringState.Hash
 
 	protocolAbi := ethaccessor.ProtocolImplAbi() // 由 commonOptions.ProtocolImpl.ImplAbi 初始化
@@ -422,17 +426,27 @@ func (submitter *RingSubmitter) GenerateRingSubmitInfo(ringState *types.Ring) (*
 		ringSubmitInfo.Miner = senderAddress
 	}
 	//submitter.computeReceivedAndSelectMiner(ringSubmitInfo)
+	// lgh: 生成 protocolAbi 智能合议 的 inputData
 	if protocolData, err :=
 		ethaccessor.GenerateSubmitRingMethodInputsData(ringState, submitter.feeReceipt, protocolAbi); nil != err {
 		return nil, err
 	} else {
 		ringSubmitInfo.ProtocolData = protocolData
 	}
-	//预先判断是否会提交成功
+	// 预先判断是否会提交成功
+	// lgh: 找出所有订单中订单的生成时间中最大的一个，也就是最后的一个
 	lastTime := ringSubmitInfo.RawRing.ValidSinceTime()
+	// lgh: currentBlockTime 在新区块生成监听事件中被赋值，是当前 latest 区块的 什么时间?
 	if submitter.currentBlockTime > 0 && lastTime <= submitter.currentBlockTime {
+		// lgh: lastTime <= submitter.currentBlockTime
+		// 如果当前环中的所有订单中的初始时间最大的一个比 latest 的要小和等于它，证明这个环已经成功过了
 		var err error
-		_, _, err = ethaccessor.EstimateGas(ringSubmitInfo.ProtocolData, ringSubmitInfo.ProtocolAddress, "latest")
+		// lgh: EstimateGas 估计调用需要耗费的gas量。这个方法在节点的VM中执行一个消息调用或交易，但是不会修改区块链。
+		_, _, err = ethaccessor.EstimateGas(
+			ringSubmitInfo.ProtocolData,
+			ringSubmitInfo.ProtocolAddress,
+			"latest")
+
 		//ringSubmitInfo.ProtocolGas, ringSubmitInfo.ProtocolGasPrice, err = ethaccessor.EstimateGas(ringSubmitInfo.ProtocolData, protocolAddress, "latest")
 		if nil != err {
 			log.Errorf("can't generate ring ,err:%s", err.Error())
@@ -440,9 +454,9 @@ func (submitter *RingSubmitter) GenerateRingSubmitInfo(ringState *types.Ring) (*
 		}
 	}
 
-	//if nil != err {
-	//	return nil, err
-	//}
+	// lgh: 下面的 submitter.maxGasLimit 和 submitter.maxGasLimit 一样是从配置文件中初始化过来的
+	// lgh: ProtocolGas = ringState.Gas，ringState.Gas 由环内订单数决定，对应之前的数组 gasUsedMap
+	// lgh: 目前看来，500000 < 1000000000，ringSubmitInfo.ProtocolGas == 1000000000
 	if submitter.maxGasLimit.Sign() > 0 && ringSubmitInfo.ProtocolGas.Cmp(submitter.maxGasLimit) > 0 {
 		ringSubmitInfo.ProtocolGas.Set(submitter.maxGasLimit)
 	}
@@ -474,13 +488,13 @@ func (submitter *RingSubmitter) availableSenderAddresses() []*NormalSenderAddres
 		var blockedTxCount, txCount types.Big
 		//todo:change it by event
 
-		// 下面获取当前的提交地址 Address 在以太坊截止目前提交了多少 block 数量
+		// 下面获取当前的提交地址 Address 在以太坊截止目前提交成的最新块的 号码
 		ethaccessor.GetTransactionCount(
 			&blockedTxCount,
 			minerAddress.Address, "latest")
 
-		// 下面获取当前的提交地址 Address 在以太坊截止目前提交了多少
-		// 正处于等待被处理的block 数量
+		// 下面获取当前的提交地址 Address 在以太坊截止目前提交了正处于等待被处理的 block 号码
+		// earliest <= latest < pending
 		ethaccessor.GetTransactionCount(
 			&txCount,
 			minerAddress.Address, "pending")
@@ -492,9 +506,10 @@ func (submitter *RingSubmitter) availableSenderAddresses() []*NormalSenderAddres
 		pendingCount := big.NewInt(int64(0))
 
 		// 下面 pendingCount = txCount - blockedTxCount，要求 txCount > blockedTxCount
+		// pendingCount 是等待区块的数目
 		pendingCount.Sub(txCount.BigInt(), blockedTxCount.BigInt())
 		if pendingCount.Int64() <= minerAddress.MaxPendingCount {
-			// MaxPendingCount 是区块等待状态中的最大数，在 NewSubmitter 的时候初始化一次
+			// MaxPendingCount 是区块等待状态中个数的最大数，在 NewSubmitter 的时候初始化一次
 			// pendingCount <= MaxPendingCount，还没超出范围，添加入发送者地址。这里有可能 0<= MaxPendingCount
 			senderAddresses = append(senderAddresses, minerAddress)
 		}

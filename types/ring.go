@@ -82,6 +82,8 @@ func (ring *Ring) GenerateUniqueId() common.Hash {
 
 func (ring *Ring) GenerateHash(feeReceipt common.Address) common.Hash {
 	hashBytes := crypto.GenerateHash(
+		// lgh: GenerateUniqueId 这里面根据每个订单信息生成的 hash 值来参与生成 唯一 id，
+		// 从而导致了虽然 feeReceipt 一样，输出却不一样
 		ring.GenerateUniqueId().Bytes(),
 		feeReceipt.Bytes(),
 		common.LeftPadBytes(ring.FeeSelections().Bytes(), 2),
@@ -105,6 +107,7 @@ func (ring *Ring) GenerateHash(feeReceipt common.Address) common.Hash {
 //	}
 //}
 
+// lgh: 找出所有订单中订单的生成时间中最大的一个，也就是最后的一个
 func (ring *Ring) ValidSinceTime() int64 {
 	latestValidSince := int64(0)
 	if nil != ring && len(ring.Orders) > 0 {

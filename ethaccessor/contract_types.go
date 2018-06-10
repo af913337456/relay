@@ -378,20 +378,43 @@ type SubmitRingMethodInputs struct {
 	FeeReceipt         common.Address
 }
 
-func GenerateSubmitRingMethodInputsData(ring *types.Ring, feeReceipt common.Address, protocolAbi *abi.ABI) ([]byte, error) {
+// lgh: 生成 LPSC 智能协议的 input，内部也再次签名了
+func GenerateSubmitRingMethodInputsData(
+	ring *types.Ring,
+	feeReceipt common.Address, // lgh: 矿工的撮合收费地址
+	protocolAbi *abi.ABI) ([]byte, error) {
+
 	inputs := &SubmitRingMethodInputs{}
 	inputs = emptySubmitRingInputs(feeReceipt)
 	authVList := []uint8{}
 	authRList := [][32]byte{}
 	authSList := [][32]byte{}
 	if types.IsZeroHash(ring.Hash) {
-		ring.Hash = ring.GenerateHash(feeReceipt)
+		ring.Hash = ring.GenerateHash(feeReceipt) // 矿工的撮合收费地址的 hash 值
 	}
 	for _, filledOrder := range ring.Orders {
 		order := filledOrder.OrderState.RawOrder
-		inputs.AddressList = append(inputs.AddressList, [4]common.Address{order.Owner, order.TokenS, order.WalletAddress, order.AuthAddr})
+		inputs.AddressList = append(
+			inputs.AddressList,
+			// AuthAddr 客户端传过来的随机生成的公钥 todo 是不是对应用户账号的私钥？
+			[4]common.Address{order.Owner, order.TokenS, order.WalletAddress, order.AuthAddr})
+
+		// lgh: FloatString(0) 四舍五入 把 除之后的结果转为字符串
+		// lgh: 有 RateAmountS 却没有 RateAmountB，猜测这个是 LPSC 验证需要而设置的。是单个订单的原始(Sell量*汇率折价后)的值
+		// filledOrder.RateAmountS.Mul(amountS, ringState.ReducedRate) (ReducedRate = 1 - y)
 		rateAmountS, _ := new(big.Int).SetString(filledOrder.RateAmountS.FloatString(0), 10)
-		inputs.UintArgsList = append(inputs.UintArgsList, [6]*big.Int{order.AmountS, order.AmountB, order.ValidSince, order.ValidUntil, order.LrcFee, rateAmountS})
+		inputs.UintArgsList =
+			append(
+				inputs.UintArgsList,
+				[6]*big.Int{
+					order.AmountS,
+					order.AmountB,
+					order.ValidSince,
+					order.ValidUntil,
+					order.LrcFee, // lgh: 用户原始订单中的带过来的手续费，可能是 0
+					rateAmountS})
+
+			// MarginSplitPercentage 分润比例
 		inputs.Uint8ArgsList = append(inputs.Uint8ArgsList, [1]uint8{order.MarginSplitPercentage})
 
 		inputs.BuyNoMoreThanBList = append(inputs.BuyNoMoreThanBList, order.BuyNoMoreThanAmountB)
@@ -401,7 +424,12 @@ func GenerateSubmitRingMethodInputsData(ring *types.Ring, feeReceipt common.Addr
 		inputs.SList = append(inputs.SList, order.S)
 
 		//sign By authPrivateKey
-		if signBytes, err := order.AuthPrivateKey.Sign(ring.Hash.Bytes(), order.AuthPrivateKey.Address()); nil == err {
+		// lgh: 下面签名环路，环路的签名
+		if signBytes, err :=
+			order.AuthPrivateKey.Sign(
+				ring.Hash.Bytes(),
+				order.AuthPrivateKey.Address()); nil == err {
+
 			v, r, s := crypto.SigToVRS(signBytes)
 			authVList = append(authVList, v)
 			authRList = append(authRList, types.BytesToBytes32(r).Bytes32())
@@ -417,7 +445,7 @@ func GenerateSubmitRingMethodInputsData(ring *types.Ring, feeReceipt common.Addr
 
 	inputs.FeeSelections = uint16(ring.FeeSelections().Uint64())
 
-	return protocolAbi.Pack("submitRing",
+	return protocolAbi.Pack("submitRing", // lgh: 方法名
 		inputs.AddressList,
 		inputs.UintArgsList,
 		inputs.Uint8ArgsList,

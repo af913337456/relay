@@ -194,6 +194,16 @@ func (mc *MutilClient) BlockNumber(result interface{}) error {
 
 func (mc *MutilClient) useageClient(blockNumberStr string) ([]string, error) {
 	urls := []string{}
+	/*
+	// lgh: SMembers 的含义
+	redis> SADD language Ruby Python Clojure
+	(integer) 3
+
+	redis> SMEMBERS language
+	1) "Python"
+	2) "Ruby"
+	3) "Clojure"
+	*/
 	if data, err := cache.SMembers(USAGE_CLIENT_BLOCK + blockNumberStr); nil != err {
 		return urls, err
 	} else {

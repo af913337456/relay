@@ -354,10 +354,33 @@ func (e *Evaluator) computeFeeOfRingAndOrder(ringState *types.Ring) error {
 
 		lrcFee := new(big.Rat).SetInt(big.NewInt(int64(2)))
 		lrcFee.Mul(lrcFee, filledOrder.LegalLrcFee) // lrcFee = 2 * 手续费的实际价格
+
+		/**
+		lgh: 下面的判断直接影响 ringState.LegalFee 而影响 ringState.Received，而在函数外面是有
+		通过判断 ringState.Received > 0 来判断当前的 ring 是否有效的。
+
+		如果用户传来的订单中，手续费是0，那么 => (filledOrder.LrcFee = 0) => (lrcFee = 0)
+		=> [lrcFee<filledOrder.LegalFeeS && 矿工的Lrc余额 > filledOrder.LrcFee] 而进入分润模式
+
+		如果 filledOrder.LegalFeeS = 0 或 矿工的Lrc余额=0 导致无法进入分润模式。而进入
+
+		LegalFee = 累加LegalLrcFee 的情况。而导致 LegalFee = 0，而最后 ringState.Received = 0。
+
+		该环就没效。
+
+		而导致 filledOrder.LegalFeeS = 0 的情况有，MarginSplitPercentage = 0。就是分润比例，也是
+
+		从客户端订单传来的。这时，该环就废了。或 legalAmountOfSaving = 0，概率低。
+
+		所以，客户的订单 order 中，手续费和分润比例不能同时 = 0。当然服务端也可以做矫正，设置最小值
+
+		*/
+
 		if lrcFee.Cmp(filledOrder.LegalFeeS) < 0 && feeReceiptLrcAvailableAmount.Cmp(filledOrder.LrcFee) > 0 {
 			// (2 * 手续费的实际价格) < FeeS 差价真实的实际价格(原FeeS 的价值 * 分润比例)
 			// && 当前矿工收益地址 的 lrc 余额 > 乘上比例后的手续费LrcFee
-			// if LegalLrcFee == 0 ==> lrcFee == 0 也适合该模式
+			// lgh: todo 注意这点 ---> if LegalLrcFee == 0 ==> lrcFee == 0 也适合该模式，
+			// todo 因为 (order.LrcFee = 0) => (LegalLrcFee = 0 & filledOrder.LrcFee = 0) => (lrcFee = 0) => (lrcFee < LegalFeeS)
 			// 白皮书: 分润收入超过2倍 LRx 手续费，矿工便会选取分润模式，向用户支付 LRx 手续费。
 			filledOrder.FeeSelection = 1
 
