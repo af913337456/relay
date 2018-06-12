@@ -1,0 +1,49 @@
+INFO [06-12|22:05:41] Maximum peer count                       ETH=25 LES=0 total=25
+INFO [06-12|22:05:43] Using developer account                  address=0xce5b3FC6685A1DEa6c79a8A97aCfCA61D8A8e547
+INFO [06-12|22:05:43] Starting peer-to-peer node               instance=Geth/v1.8.3-stable-329ac18e/windows-amd64/go1.10
+INFO [06-12|22:05:43] Writing custom genesis block 
+INFO [06-12|22:05:43] Persisted trie from memory database      nodes=11 size=2.17kB time=0s gcnodes=0 gcsize=0.00B gctime=0s livenodes=1 livesize=0.00B
+INFO [06-12|22:05:43] Initialised chain configuration          config="{ChainID: 1337 Homestead: 0 DAO: <nil> DAOSupport: false EIP150: 0 EIP155: 0 EIP158: 0 Byzantium: 0 Constantinople: <nil> Engine: clique}"
+INFO [06-12|22:05:43] Initialising Ethereum protocol           versions="[63 62]" network=1
+INFO [06-12|22:05:43] Loaded most recent local header          number=0 hash=05b012…0d751d td=1
+INFO [06-12|22:05:43] Loaded most recent local full block      number=0 hash=05b012…0d751d td=1
+INFO [06-12|22:05:43] Loaded most recent local fast block      number=0 hash=05b012…0d751d td=1
+INFO [06-12|22:05:43] Starting P2P networking 
+INFO [06-12|22:05:43] RLPx listener up                         self="enode://e0dd462d99d57c0e0df9845f3daf7d7a710789421bcb5b6a8a83458a700d176e33c58ca6158df2f46269b04bfca108f032d6539327b6c3a1af8b0f42148a48e5@[::]:57004?discport=0"
+INFO [06-12|22:05:43] started whisper v.6.0 
+INFO [06-12|22:05:43] IPC endpoint opened                      url=\\\\.\\pipe\\geth.ipc
+INFO [06-12|22:05:43] HTTP endpoint opened                     url=http://127.0.0.1:8545 cors= vhosts=localhost
+INFO [06-12|22:05:43] Transaction pool price threshold updated price=18000000000
+INFO [06-12|22:05:43] Etherbase automatically configured       address=0xce5b3FC6685A1DEa6c79a8A97aCfCA61D8A8e547
+INFO [06-12|22:05:43] Starting mining operation 
+INFO [06-12|22:05:43] Commit new mining work                   number=1 txs=0 uncles=0 elapsed=487.4µs
+WARN [06-12|22:05:43] Block sealing failed                     err="waiting for transactions"
+INFO [06-12|22:52:38] HTTP endpoint closed                     url=http://127.0.0.1:8545
+INFO [06-12|22:52:38] IPC endpoint closed                      endpoint=\\\\.\\pipe\\geth.ipc
+INFO [06-12|22:52:38] Blockchain manager stopped 
+INFO [06-12|22:52:38] Stopping Ethereum protocol 
+INFO [06-12|22:52:38] Ethereum protocol stopped 
+INFO [06-12|22:52:38] Transaction pool stopped 
+INFO [06-12|22:52:38] whisper stopped 
+INFO [06-12|22:53:22] Maximum peer count                       ETH=25 LES=0 total=25
+INFO [06-12|22:53:24] Using developer account                  address=0x3e91f8a0130BBD57EaF3D7f1cD53a123D8B9252D
+INFO [06-12|22:53:24] Starting peer-to-peer node               instance=Geth/v1.8.3-stable-329ac18e/windows-amd64/go1.10
+INFO [06-12|22:53:24] Allocated cache and file handles         database=C:\\go_1.9\\lgh\\src\\github.com\\Loopring\\relay\\geth_dev_data\\geth\\chaindata cache=768 handles=1024
+INFO [06-12|22:53:24] Writing custom genesis block 
+INFO [06-12|22:53:24] Persisted trie from memory database      nodes=12 size=2.26kB time=0s gcnodes=0 gcsize=0.00B gctime=0s livenodes=1 livesize=0.00B
+INFO [06-12|22:53:24] Initialised chain configuration          config="{ChainID: 1337 Homestead: 0 DAO: <nil> DAOSupport: false EIP150: 0 EIP155: 0 EIP158: 0 Byzantium: 0 Constantinople: <nil> Engine: clique}"
+INFO [06-12|22:53:24] Initialising Ethereum protocol           versions="[63 62]" network=1
+INFO [06-12|22:53:24] Loaded most recent local header          number=0 hash=f1233a…f3e220 td=1
+INFO [06-12|22:53:24] Loaded most recent local full block      number=0 hash=f1233a…f3e220 td=1
+INFO [06-12|22:53:24] Loaded most recent local fast block      number=0 hash=f1233a…f3e220 td=1
+INFO [06-12|22:53:24] Regenerated local transaction journal    transactions=0 accounts=0
+INFO [06-12|22:53:24] Starting P2P networking 
+INFO [06-12|22:53:24] RLPx listener up                         self="enode://e1fc3293ae1b765f37835a599ab1ae75a54ffbca9b7f7ea713d7b2c6df7aa6fc276715e46f86fc8d7faba266c6c352ff724f265f1d0373078616bfcc469a879d@[::]:64847?discport=0"
+INFO [06-12|22:53:24] started whisper v.6.0 
+INFO [06-12|22:53:24] IPC endpoint opened                      url=\\\\.\\pipe\\geth.ipc
+INFO [06-12|22:53:24] HTTP endpoint opened                     url=http://127.0.0.1:8545 cors= vhosts=localhost
+INFO [06-12|22:53:24] Transaction pool price threshold updated price=18000000000
+INFO [06-12|22:53:24] Etherbase automatically configured       address=0x3e91f8a0130BBD57EaF3D7f1cD53a123D8B9252D
+INFO [06-12|22:53:24] Starting mining operation 
+INFO [06-12|22:53:24] Commit new mining work                   number=1 txs=0 uncles=0 elapsed=0s
+WARN [06-12|22:53:24] Block sealing failed                     err="waiting for transactions"

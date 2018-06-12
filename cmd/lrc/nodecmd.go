@@ -82,14 +82,17 @@ func unlockAccount(ctx *cli.Context, globalConfig *config.GlobalConfig) {
 	if "full" == globalConfig.Mode || "miner" == globalConfig.Mode {
 
 		// lgh: 添加一个测试旷工账号
-		testMinerAc := accounts.Account{Address: common.HexToAddress("0xe80fa647e08dfe7a502bd02e2ccc40f3a5acaefe")}
+		//testMinerAc :=
+		//	accounts.Account{Address: common.HexToAddress(
+		//	"0xe80fa647e08dfe7a502bd02e2ccc40f3a5acaefe")}
 
-		unlockAccs := []accounts.Account{testMinerAc}
+		unlockAccs := []accounts.Account{}
 		minerAccs := []string{}
 		if ctx.IsSet(utils.UnlockFlag.Name) {
 			unlocks := strings.Split(ctx.String(utils.UnlockFlag.Name), ",")
 			for _, acc := range unlocks {
 				if common.IsHexAddress(acc) {
+					fmt.Println("控制台读取一个地址")
 					unlockAccs = append(unlockAccs, accounts.Account{Address: common.HexToAddress(acc)})
 				} else {
 					utils.ExitWithErr(ctx.App.Writer, errors.New(acc+" is not a HexAddress"))
@@ -114,7 +117,8 @@ func unlockAccount(ctx *cli.Context, globalConfig *config.GlobalConfig) {
 				}
 			}
 			if !unlocked {
-				utils.ExitWithErr(ctx.App.Writer, fmt.Errorf("the address:%s used to mine ring must be unlocked ", addr))
+				utils.ExitWithErr(ctx.App.Writer,
+					fmt.Errorf("the address:%s used to mine ring must be unlocked ", addr))
 			}
 		}
 

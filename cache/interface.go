@@ -20,6 +20,8 @@ package cache
 
 import (
 	myredis "github.com/Loopring/relay/cache/redis"
+	"fmt"
+	"qiniupkg.com/x/errors.v7"
 )
 
 var cache Cache
@@ -66,6 +68,12 @@ type Cache interface {
 func NewCache(cfg interface{}) {
 	redisCache := &myredis.RedisCacheImpl{}
 	redisCache.Initialize(cfg)
+	if redisCache == nil {
+		fmt.Println("redis 初始化失败")
+		return
+	}else{
+		fmt.Println("redis 初始化不是nil")
+	}
 	cache = redisCache
 }
 
@@ -123,6 +131,10 @@ func ZAdd(key string, ttl int64, args ...[]byte) error {
 }
 
 func ZRange(key string, start, stop int64, withScores bool) ([][]byte, error) {
+	if cache == nil {
+		fmt.Println("缓存是 null")
+		return nil,errors.New("缓存是 null")
+	}
 	return cache.ZRange(key, start, stop, withScores)
 }
 func ZRemRangeByScore(key string, start, stop int64) (int64, error) {

@@ -109,6 +109,7 @@ func NewNode(logger *zap.Logger, globalConfig *config.GlobalConfig) *Node {
 
 	// register
 	n.registerMysql() // lgh:初始化数据库引擎句柄和创建对应的表格，使用了 gorm 框架
+	fmt.Println("准备初始化 redis")
 	cache.NewCache(n.globalConfig.Redis) // lgh:初始化Redis,内存存储三方框架
 
 	util.Initialize(n.globalConfig.Market) // lgh:设置从 json 文件导入代币信息，和市场

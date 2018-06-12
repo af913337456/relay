@@ -287,6 +287,7 @@ func Initialize(accessorOptions config.AccessorOptions, commonOptions config.Com
 	}
 	accessor.WethAddress = wethAddress
 
+
 	accessor.ProtocolAddresses = make(map[common.Address]*ProtocolAddress)
 	accessor.DelegateAddresses = make(map[common.Address]bool)
 

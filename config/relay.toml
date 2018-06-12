@@ -90,9 +90,9 @@ name = "Loopring corporation"
     walletSplit = 0.8
     minGasLimit = 1000000000
     maxGasLimit = 100000000000
-    feeReceipt = "0xe80fa647e08dfe7a502bd02e2ccc40f3a5acaefe"
+    feeReceipt = "0xa2268c676afacc9e7b5b6c2e00519eaf10320016"
     [[miner.normal_miners]]
-        address = "0xe80fa647e08dfe7a502bd02e2ccc40f3a5acaefe"
+        address = "0xa2268c676afacc9e7b5b6c2e00519eaf10320016"
         maxPendingTtl = 40
         maxPendingCount = 20
         gasPriceLimit = 10000000000
@@ -132,7 +132,9 @@ name = "Loopring corporation"
 
 
 [keystore]
-    keydir = "/home/who/.ethereum/keystore"
+    keydir = "geth_dev_data/keystore"
+    #"/home/who/.ethereum/keystore"
+    #win default is C:\Users\Administrator\AppData\Roaming\Ethereum
 
 
 [user_manager]
