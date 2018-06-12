@@ -13,7 +13,16 @@ import (
 	"time"
 	"encoding/json"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/Loopring/relay/types"
 )
+
+func TestIntToHex(t *testing.T) {
+	var blockNumberForRouteBig *big.Int
+	blockNumberForRouteBig = new(big.Int)
+	blockNumberForRouteBig.SetString("blockNumber", 0)
+	blockNumber := *types.NewBigPtr(blockNumberForRouteBig)
+	fmt.Println(blockNumber.BigInt().String())
+}
 
 func TestMul(t *testing.T) {
 	s := big.NewInt(300)

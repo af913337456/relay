@@ -358,7 +358,8 @@ func Initialize(accessorOptions config.AccessorOptions, commonOptions config.Com
 		accessor.ProtocolAddresses[impl.ContractAddress] = impl
 		accessor.DelegateAddresses[impl.DelegateAddress] = true
 	}
-	// lgh: 开始同步区块的数目，内部是获取了区块数
+	// lgh: 开始同步区块的数目，内部是获取了区块数，
+	// lgh: 里面做了很重要的操作，关联到多个 geth 节点选择最优的问题
 	accessor.MutilClient.startSyncBlockNumber()
 	return nil
 }

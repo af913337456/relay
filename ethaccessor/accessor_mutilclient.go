@@ -81,12 +81,14 @@ func (mc *MutilClient) newRpcClient(url string) {
 	}
 }
 
+// lgh: 各 geth 节点的 blockNumber 同步在定时任务处进行 startSyncBlockNumber()
 func (mc *MutilClient) bestClient(routeParam string) *RpcClient {
 	//latest,pending
 
 	var blockNumber types.Big
 	if "latest" == routeParam || "" == routeParam {
 		//lastIdx = mc.latestMaxIdx
+		// lgh: 内部会先从 redis 赋值最新的。就是说使用最新的 blockNumber，然后找到同步率最好的 geth
 		mc.BlockNumber(&blockNumber)
 	} else if strings.Contains(routeParam, ":") {
 		//specific node
@@ -106,17 +108,21 @@ func (mc *MutilClient) bestClient(routeParam string) *RpcClient {
 		blockNumber = *types.NewBigPtr(blockNumberForRouteBig)
 	}
 
+	// lgh: 根据 blockNumber 去缓存中获取对应的 geth url
 	urls, _ := mc.useageClient(blockNumber.BigInt().String())
 
 	for _, url := range urls {
 		if _, exists := mc.clients[url]; !exists {
+			// lgh: 不存在才再次尝试初始化
 			mc.newRpcClient(url)
 		}
 	}
 
 	if len(urls) <= 0 {
 		for url, client := range mc.clients {
-			if _, exists := mc.downedClients[url]; !exists && (nil == client.blockNumber || client.blockNumber.Cmp(blockNumber.BigInt()) >= 0) {
+			// lgh: downedClients 保存的是初始化出错时候的 url
+			if _, exists := mc.downedClients[url];
+			!exists && (nil == client.blockNumber || client.blockNumber.Cmp(blockNumber.BigInt()) >= 0) {
 				urls = append(urls, url)
 			}
 		}
@@ -134,6 +140,7 @@ func (mc *MutilClient) bestClient(routeParam string) *RpcClient {
 	}
 
 	if len(urls) > 0 {
+		// lgh: 精髓在这，使用随机选择的算法， todo 可以自行优化
 		idx := 0
 		idx = rand.Intn(len(urls))
 		client := mc.clients[urls[idx]]
@@ -148,12 +155,15 @@ func (mc *MutilClient) syncBlockNumber() {
 	// lgh: 意味着 len(mc.clients) == 1，所以下面的 eth_blockNumber 是获取本地总的区块数区块数，包含同步过来的
 	for _, client := range mc.clients {
 		var blockNumber types.Big
+		// lgh: 同步最新的区块号。从 clients 中依次得出它们不同的 blockNumber
 		if err := client.client.Call(&blockNumber, "eth_blockNumber"); nil != err {
 			mc.downedClients[client.url] = client
 		} else {
-			delete(mc.downedClients, client.url)
+			delete(mc.downedClients, client.url) // 删除指针内存
 			client.blockNumber = blockNumber.BigInt()
 			blockNumberStr := blockNumber.BigInt().String()
+			// 具备缓存时间 cacheDuration
+			// 下面就把 每个 Geth-client 对于的最新 blockNumber 的 url 保存下来了
 			cache.SAdd(USAGE_CLIENT_BLOCK+blockNumberStr, cacheDuration, []byte(client.url))
 			cache.ZAdd(BLOCKS, int64(0), []byte(blockNumberStr), []byte(blockNumberStr))
 			cache.ZRemRangeByScore(BLOCKS, int64(0), blockNumber.Int64()-blocks_count)
@@ -165,7 +175,7 @@ func (mc *MutilClient) startSyncBlockNumber() {
 	go func() {
 		for {
 			select {
-			case <-time.After(time.Duration(3 * time.Second)):
+			case <-time.After(time.Duration(3 * time.Second)): // lgh: 时间调优 todo 放到配置文件
 				mc.syncBlockNumber()
 			}
 		}
@@ -173,13 +183,14 @@ func (mc *MutilClient) startSyncBlockNumber() {
 }
 
 func (mc *MutilClient) BlockNumber(result interface{}) error {
+	// lgh: 留意下面总是取最
 	if data, err := cache.ZRange(BLOCKS, -1, -1, false); nil != err {
 		return err
 	} else {
 		if len(data) > 0 && len(data[0]) > 0 {
 			if r, ok := result.(*types.Big); ok {
 				blockNumber := new(big.Int)
-				// lgh: 先从 redis 赋值最新的
+				// lgh: 先从 redis 赋值最新的。就是说使用最新的 blockNumber，然后找到同步率最好的 geth
 				blockNumber.SetString(string(data[0]), 0)
 				r.SetInt(blockNumber)
 			} else {
@@ -204,6 +215,7 @@ func (mc *MutilClient) useageClient(blockNumberStr string) ([]string, error) {
 	2) "Ruby"
 	3) "Clojure"
 	*/
+	// lgh: key => usage_client_block_blockNumber ; value=>url
 	if data, err := cache.SMembers(USAGE_CLIENT_BLOCK + blockNumberStr); nil != err {
 		return urls, err
 	} else {
