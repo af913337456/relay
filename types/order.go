@@ -255,7 +255,8 @@ func ConvertOrderStateToFilledOrder(
 	filledOrder.AvailableTokenSBalance = new(big.Rat).Set(tokenSBalance) // 分母是1
 
 	// lgh: 计算当前订单还剩下多少卖的和买的
-	filledOrder.AvailableAmountS, filledOrder.AvailableAmountB = filledOrder.OrderState.RemainedAmount() //----⑥
+	filledOrder.AvailableAmountS, filledOrder.AvailableAmountB =
+		filledOrder.OrderState.RemainedAmount() //----⑥
 
 	// 原始的比例 RawOrder --> 卖/买
 	sellPrice := new(big.Rat).SetFrac(filledOrder.OrderState.RawOrder.AmountS, filledOrder.OrderState.RawOrder.AmountB)

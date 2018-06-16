@@ -388,7 +388,8 @@ func (market *Market) generateFilledOrder(order *types.OrderState) (*types.Fille
 	//todo:
 	// lgh: tokenSBalance 并没有在 IsValueDusted 内部被修改
 	// lgh: IsValueDusted 主要是计算出 tokenSBalance 对应的总市值，即价值多少。再判断它的市值是否合理
-	if market.om.IsValueDusted(order.RawOrder.TokenS, tokenSBalance) {
+	if market.om.IsValueDusted(
+		order.RawOrder.TokenS, tokenSBalance) {
 		return nil, fmt.Errorf("owner:%s token:%s balance or allowance is not enough", order.RawOrder.Owner.Hex(), order.RawOrder.TokenS.Hex())
 	}
 	// lgh: 下面主要计算出当前订单剩下的要买卖的代币数量

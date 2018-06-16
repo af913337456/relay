@@ -43,7 +43,7 @@ type Evaluator struct {
 }
 
 // lgh: 从 GenerateCandidateRing 进入 ComputeRing 的情况，那么 ringState 里面的 order size == 2
-// lgh: 计算 (1-折价率)。环中所有订单的: 1/[(所有订单卖的乘积/所有订单买的乘积)^(1/订单数)]
+// lgh: 计算 (y折价率)。环中所有订单的: 1/[(所有订单卖的乘积/所有订单买的乘积)^(1/订单数)]
 func ReducedRate(ringState *types.Ring) *big.Rat {
 
 	productAmountS := big.NewRat(int64(1), int64(1)) // 初始化是 1/1 = 1
@@ -93,7 +93,7 @@ func (e *Evaluator) ComputeRing(ringState *types.Ring) error {
 	}
 
 	// lgh: 计算`汇率折价`，它是基于环路订单组计算出的。1/[(所有订单卖的乘积/所有订单买的乘积)^(1/订单数)]
-	// 矿工提交后，LPSC 会验证 `汇率折价`,汇率折价 0<=y<1
+	// 矿工提交后，LPSC 会验证 `汇率折价`,其中汇率折价的范围是： 0<=y<1
 	ringState.ReducedRate = ReducedRate(ringState)
 
 	//todo:get the fee for select the ring of mix income
