@@ -136,6 +136,7 @@ func (c orderCache) save(ringhash common.Hash, matchedState *OrderMatchedState) 
 	if matchedData, err := json.Marshal(matchedState); nil != err {
 		return err
 	} else {
+		// lgh: c.cacheKey() === key , []byte(strings.ToLower(ringhash.Hex())) == field
 		return cache.HMSet(c.cacheKey(), cacheTtl, []byte(strings.ToLower(ringhash.Hex())), matchedData)
 	}
 }
@@ -143,7 +144,8 @@ func (c orderCache) save(ringhash common.Hash, matchedState *OrderMatchedState) 
 func (c orderCache) matchedStates() ([]*OrderMatchedState, error) {
 	states := []*OrderMatchedState{}
 	// lgh: redis.HVals 根据key返回它对应的hash表的值列表，一对多
-	// lgh: 根据当前的订单的 orderhash 去获取
+	// lgh: 根据当前的订单的 orderhash 去获取。因为当前的对应关系是一对多
+	// 所以下面会获取回所有含有该订单的环相关的买卖量
 	if filledData, err := cache.HVals(c.cacheKey()); nil != err {
 		log.Errorf("matchedStates orderhash:%s, err:%s", c.orderhash.Hex(), err.Error())
 		return states, err
@@ -160,17 +162,18 @@ func (c orderCache) matchedStates() ([]*OrderMatchedState, error) {
 	return states, nil
 }
 
-// lgh: 这是干什么的？
+// lgh: 主要的作用是找出当前的订单 order 在参与之前的环中，已经买卖了多少的量
 func (c orderCache) dealtAmount() (dealtAmountS *big.Rat, dealtAmountB *big.Rat, err error) {
 	dealtAmountS = big.NewRat(int64(0), int64(1))
 	dealtAmountB = big.NewRat(int64(0), int64(1))
+
+	// lgh: 下面去 redis 中获取。对于的设置的地方在 AddMinedRing 方法中
 	if states, err := c.matchedStates(); nil != err {
 		log.Errorf("orderhash:%s err:%s", c.orderhash.Hex(), err.Error())
 		return dealtAmountS, dealtAmountB, err
 	} else {
 		for _, state := range states {
-			// todo lgh: Add 这个运算目前没看懂为何如此搞
-			// fixed 上面 todo--> rat.add 是相加，a/b.add(a/b,a1/b1) = a/b + a1/b1
+			// lgh: 找出后，进行累加 dealtAmountS 就是已经处理了，即买卖了的总量
 			dealtAmountS.Add(dealtAmountS, state.FilledAmountS.BigRat())
 			dealtAmountB.Add(dealtAmountB, state.FilledAmountB.BigRat())
 		}
@@ -187,6 +190,7 @@ func RemoveMinedRingAndReturnOrderhashes(ringhash common.Hash) ([]common.Hash, e
 	if data, err := cache.SMembers(cacheKey); nil != err {
 		return orderhashes, err
 	} else {
+		// lgh: 清空 买卖量 的缓存 - removeRinghash
 		for _, d := range data {
 			orderhash, owner, tokenS := c.parseFiled(d)
 			orderhashes = append(orderhashes, orderhash)
@@ -214,20 +218,27 @@ func RemoveMinedRingAndReturnOrderhashes(ringhash common.Hash) ([]common.Hash, e
 //添加已经提交了的环路
 func AddMinedRing(ringState *types.RingSubmitInfo) {
 	ringC := ringCache{}
-	ringC.ringhash = ringState.RawRing.Hash
+	ringC.ringhash = ringState.RawRing.Hash // 环整体的 hash
 	//ringFieldData := [][]byte{}
 	for _, filledOrder := range ringState.RawRing.Orders {
-		orderhash := filledOrder.OrderState.RawOrder.Hash
+		orderhash := filledOrder.OrderState.RawOrder.Hash // 单个订单 order 的 hash
 		owner := filledOrder.OrderState.RawOrder.Owner
 		tokenS := filledOrder.OrderState.RawOrder.TokenS
 		//ringFieldData = append(ringFieldData, ringC.cacheFiled(orderhash, owner, tokenS))
 		ringC.save(ringC.cacheFiled(orderhash, owner, tokenS))
 
 		ordC := orderCache{}
-		ordC.orderhash = orderhash
+		ordC.orderhash = orderhash // 订单的 hash 在 redis 的 hmset 中作 key
 		matchedState := &OrderMatchedState{}
 		matchedState.FilledAmountB = types.NewBigRat(filledOrder.FillAmountB)
 		matchedState.FilledAmountS = types.NewBigRat(filledOrder.FillAmountS)
+
+		// lgh: 设置到 redis 缓存中，记录当前订单 order 买卖了多少量
+		// redis 中的 field 是 order 的 hash
+		/*
+		对应的关系就是：
+			订单 hash 对应 多个环 hash
+		*/
 		ordC.save(ringC.ringhash, matchedState)
 
 		ownerC := ownerCache{}

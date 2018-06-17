@@ -167,6 +167,7 @@ func (matcher *TimingMatcher) listenSubmitEvent() {
 		for {
 			select {
 			case minedEvent := <-submitEventChan:
+				// lgh: TX_STATUS_PENDING 的时候不进入下面
 				if minedEvent.Status == types.TX_STATUS_FAILED ||
 					minedEvent.Status == types.TX_STATUS_SUCCESS ||
 						minedEvent.Status == types.TX_STATUS_UNKNOWN {

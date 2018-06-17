@@ -364,7 +364,8 @@ func (accessor *ethNodeAccessor) ContractSendTransactionByData(routeParam string
 			gas = estimagetGas
 		}
 	}
-	nonce := accessor.addressCurrentNonce(sender) // lgh: 矿工的提交地址
+	// lgh: 下面去获取 nonce
+	nonce := accessor.addressCurrentNonce(sender) // lgh:  sender 矿工的提交地址
 	log.Infof("nonce:%s, gas:%s", nonce.String(), gas.String())
 	if value == nil {
 		value = big.NewInt(0)
@@ -399,7 +400,7 @@ func (accessor *ethNodeAccessor) ContractSendTransactionByData(routeParam string
 		//
 		//}
 	}
-	accessor.addressNextNonce(sender)
+	accessor.addressNextNonce(sender)  // 内部进行了 nonce 的 ++，所以上面 addressCurrentNonce 就是 ++ 后的
 	return txHash, nil // lgh: 返回交易单的 hash
 }
 
@@ -626,7 +627,7 @@ func (accessor *ethNodeAccessor) addressNextNonce(address common.Address) *big.I
 	defer accessor.mtx.Unlock()
 
 	nonce := accessor.addressCurrentNonce(address)
-	nonce.Add(nonce, big.NewInt(int64(1)))
+	nonce.Add(nonce, big.NewInt(int64(1))) // lgh: nonce 的 ++ 操作
 	accessor.AddressNonce[address].Set(nonce)
 	return nonce
 }

@@ -131,6 +131,7 @@ type RingMinedEvent struct {
 }
 
 func (e *RingMinedEvent) ConvertDown() (*types.RingMinedEvent, []*types.OrderFilledEvent, error) {
+	// lgh: OrderInfoList 由智能合约设置，具体是怎样实现的，要看智能合约代码
 	length := len(e.OrderInfoList)
 	idx := length / 7
 

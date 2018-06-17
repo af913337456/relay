@@ -284,6 +284,7 @@ func (processor *AbiProcessor) loadProtocolContract() {
 			watcher = &eventemitter.Watcher{Concurrent: false, Handle: processor.handleCutoffPairEvent}
 		}
 
+		// lgh: 下面就是根据协议的id 进行事件绑定
 		eventemitter.On(contract.Id.Hex(), watcher)
 		processor.events[contract.Id] = contract
 		log.Infof("extractor,contract event name:%s -> key:%s", contract.Name, contract.Id.Hex())
@@ -654,13 +655,6 @@ func (processor *AbiProcessor) handleRingMinedEvent(input eventemitter.EventData
 		log.Errorf("extractor,tx:%s ringMined event indexed fields number error", contractData.TxHash.Hex())
 		return nil
 	}
-
-	// emit to miner
-	//var evt types.SubmitRingMethodEvent
-	//evt.TxInfo = contractData.TxInfo
-	//evt.Err = nil
-	//eventemitter.Emit(eventemitter.Miner_SubmitRing_Method, &evt)
-
 	// process ringmined to fills
 	contractEvent := contractData.Event.(*ethaccessor.RingMinedEvent)
 	contractEvent.RingHash = common.HexToHash(contractData.Topics[1])
@@ -710,6 +704,7 @@ func (processor *AbiProcessor) handleRingMinedEvent(input eventemitter.EventData
 		orderhashList = append(orderhashList, fill.OrderHash.Hex())
 	}
 
+	// lgh: 下面找出数据库中与之对应的订单 order
 	ordermap, err := processor.db.GetOrdersByHash(orderhashList)
 	if err != nil {
 		log.Errorf("extractor,tx:%s ringMined event getOrdersByHash error:%s", contractData.TxHash.Hex(), err.Error())

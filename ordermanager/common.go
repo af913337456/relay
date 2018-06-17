@@ -64,6 +64,7 @@ func newOrderEntity(state *types.OrderState, mc marketcap.MarketCapProvider, blo
 	}
 
 	// check order finished status
+	// lgh: ORDER_FROM_FILL 会造成订单不会再被 select 出
 	settleOrderStatus(state, mc, ORDER_FROM_FILL) // lgh: 目前这里内部总是直接设置为新订单状态
 
 	if blockNumber == nil {
@@ -94,19 +95,22 @@ const (
 
 func settleOrderStatus(state *types.OrderState, mc marketcap.MarketCapProvider, source OrderFillOrCancelType) {
 	zero := big.NewInt(0)
-	finishAmountS := big.NewInt(0).Add(state.CancelledAmountS, state.DealtAmountS) // 0+0
-	totalAmountS := big.NewInt(0).Add(finishAmountS, state.SplitAmountS)// 0+0
-	finishAmountB := big.NewInt(0).Add(state.CancelledAmountB, state.DealtAmountB) // 0+0
-	totalAmountB := big.NewInt(0).Add(finishAmountB, state.SplitAmountB) // 0+0
-	totalAmount := big.NewInt(0).Add(totalAmountS, totalAmountB) // 0+0
+	finishAmountS := big.NewInt(0).Add(state.CancelledAmountS, state.DealtAmountS)
+	totalAmountS := big.NewInt(0).Add(finishAmountS, state.SplitAmountS)
+
+	finishAmountB := big.NewInt(0).Add(state.CancelledAmountB, state.DealtAmountB)
+	totalAmountB := big.NewInt(0).Add(finishAmountB, state.SplitAmountB)
+
+	totalAmount := big.NewInt(0).Add(totalAmountS, totalAmountB)
 
 	if totalAmount.Cmp(zero) <= 0 {
 		state.Status = types.ORDER_NEW // lgh: 直接返回 新订单
 		return
 	}
 
+	// lgh: 核心，下面进行当前的订单交易量是否全部交易完
 	if !isOrderFullFinished(state, mc) {
-		state.Status = types.ORDER_PARTIAL
+		state.Status = types.ORDER_PARTIAL // 部分的
 		return
 	}
 
@@ -150,7 +154,6 @@ func isValueDusted(value *big.Rat) bool {
 	if value == nil || value.Cmp(minRat) > 0 {
 		return false
 	}
-
 	return true
 }
 

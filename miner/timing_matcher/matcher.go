@@ -129,6 +129,7 @@ func (matcher *TimingMatcher) cleanMissedCache() {
 
 			if submitInfo, err1 := matcher.db.GetRingForSubmitByHash(ringhash); nil == err1 {
 				if submitInfo.ID <= 0 {
+					// lgh: 这里一般不会 < 0，在插入的时候 ID 是自增的，插入处在 submitter.go 的 listenNewRings 方法处
 					RemoveMinedRingAndReturnOrderhashes(ringhash)
 					//cache.Del(RingHashPrefix + strings.ToLower(ringhash.Hex()))
 				}

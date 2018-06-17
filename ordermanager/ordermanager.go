@@ -181,13 +181,14 @@ func (om *OrderManagerImpl) handleSubmitRingMethod(input eventemitter.EventData)
 	return nil
 }
 
+// lgh: 主要是保存 RingMinedEvent 记录
 func (om *OrderManagerImpl) handleRingMined(input eventemitter.EventData) error {
 	event := input.(*types.RingMinedEvent)
 
 	if event.Status != types.TX_STATUS_SUCCESS {
 		return nil
 	}
-
+	// lgh: 是 TX_STATUS_SUCCESS 才进入
 	var (
 		model = &dao.RingMinedEvent{}
 		err   error
@@ -211,10 +212,11 @@ func (om *OrderManagerImpl) handleOrderFilled(input eventemitter.EventData) erro
 	if event.Status != types.TX_STATUS_SUCCESS {
 		return nil
 	}
-
+	// lgh: 是 TX_STATUS_SUCCESS 才进入
 	// save fill event
 	_, err := om.rds.FindFillEvent(event.TxHash.Hex(), event.FillIndex.Int64())
 	if err == nil {
+		// lgh: 存在记录
 		log.Debugf("order manager,handle order filled event,fill already exist tx:%s fillIndex:%d", event.TxHash.String(), event.FillIndex)
 		return nil
 	}
@@ -225,6 +227,7 @@ func (om *OrderManagerImpl) handleOrderFilled(input eventemitter.EventData) erro
 	if err != nil {
 		return err
 	}
+	// lgh: 下面的 ConvertUp 会把 model 的 state 设置进 state 的
 	if err := model.ConvertUp(state); err != nil {
 		return err
 	}
@@ -240,7 +243,9 @@ func (om *OrderManagerImpl) handleOrderFilled(input eventemitter.EventData) erro
 	}
 
 	// judge order status
-	if state.Status == types.ORDER_CUTOFF || state.Status == types.ORDER_FINISHED || state.Status == types.ORDER_UNKNOWN {
+	if state.Status == types.ORDER_CUTOFF ||
+		state.Status == types.ORDER_FINISHED ||
+		state.Status == types.ORDER_UNKNOWN {
 		log.Debugf("order manager,handle order filled event,order %s status is %d ", state.RawOrder.Hash.Hex(), state.Status)
 		return nil
 	}
@@ -491,13 +496,15 @@ func (om *OrderManagerImpl) MinerOrders(
 		reservedTime, // 保留的时间 45
 		startBlockNumber, // 有时候是0
 		// endBlockNumber 进入循环 + 10000 = 10 秒
-		endBlockNumber); err != nil {
+		endBlockNumber);
+		err != nil {
 
 		log.Errorf("err:%s", err.Error())
 		return list
 	}
 
 	for _, v := range modelList {
+		// lgh: DealtAmountS，DealtAmountB 在下面初始化为 0
 		state := &types.OrderState{}
 		v.ConvertUp(state)
 		if om.um.InWhiteList(state.RawOrder.Owner) {

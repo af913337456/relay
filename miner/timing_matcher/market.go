@@ -271,7 +271,8 @@ func (market *Market) getOrdersForMatching(delegateAddress common.Address) {
 	market.BtoAOrderHashesExcludeNextRound = []common.Hash{}
 
 	for _, order := range atoBOrders {
-		market.reduceRemainedAmountBeforeMatch(order) // lgh: 目前不知道这个是什么意图
+		// lgh: 统计当前订单在之前的环中已经买卖了的量
+		market.reduceRemainedAmountBeforeMatch(order)
 		if !market.om.IsOrderFullFinished(order) {
 			market.AtoBOrders[order.RawOrder.Hash] = order
 		} else {
@@ -295,6 +296,7 @@ func (market *Market) getOrdersForMatching(delegateAddress common.Address) {
 func (market *Market) reduceRemainedAmountBeforeMatch(orderState *types.OrderState) {
 	orderHash := orderState.RawOrder.Hash
 
+	// lgh: 找出当前的订单 order 在参与之前的环中，已经买卖了多少的 总量
 	if amountS, amountB, err := DealtAmount(orderHash); nil != err {
 		log.Errorf("err:%s", err.Error())
 	} else {

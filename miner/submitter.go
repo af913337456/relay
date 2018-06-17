@@ -207,7 +207,10 @@ func (submitter *RingSubmitter) listenNewRings() {
 							}
 						}
 					}
-					submitter.submitResult(ringState.Ringhash, ringState.RawRing.GenerateUniqueId(), txHash, status, big.NewInt(0), big.NewInt(0), big.NewInt(0), err1)
+					submitter.submitResult(
+						ringState.Ringhash,
+						ringState.RawRing.GenerateUniqueId(),
+						txHash, status, big.NewInt(0), big.NewInt(0), big.NewInt(0), err1)
 				}
 			}
 			return nil
@@ -296,7 +299,9 @@ func (submitter *RingSubmitter) listenSubmitRingMethodEventFromMysql() {
 							ringhash := common.HexToHash(info.RingHash)
 							uniqueId := common.HexToHash(info.UniqueId)
 
-							submitter.submitResult(ringhash, uniqueId, evt.TxHash, evt.Status, big.NewInt(0), evt.BlockNumber, evt.GasUsed, err1)
+							submitter.submitResult(
+								ringhash, uniqueId, evt.TxHash, evt.Status,
+								big.NewInt(0), evt.BlockNumber, evt.GasUsed, err1)
 						}
 					}
 				} else {
@@ -309,6 +314,7 @@ func (submitter *RingSubmitter) listenSubmitRingMethodEventFromMysql() {
 
 		cache.Set(SubmitRingMethod_LastId, []byte(strconv.Itoa(lastId)), int64(0))
 	}
+	// lgh: 5/s 的定时任务
 	go func() {
 		processSubmitRingMethod()
 		for {

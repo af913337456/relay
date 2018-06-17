@@ -115,7 +115,10 @@ func (s *RdsServiceImpl) FindFillEvent(txhash string, FillIndex int64) (*FillEve
 		fill FillEvent
 		err  error
 	)
-	err = s.db.Where("tx_hash = ? and fill_index = ?", txhash, FillIndex).Where("fork = ?", false).First(&fill).Error
+	err = s.db.
+		Where("tx_hash = ? and fill_index = ?", txhash, FillIndex).
+		Where("fork = ?", false).
+		First(&fill).Error
 
 	return &fill, err
 }

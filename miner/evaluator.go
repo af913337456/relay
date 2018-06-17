@@ -273,7 +273,7 @@ func (e *Evaluator) computeFeeOfRingAndOrder(ringState *types.Ring) error {
 			// 下面 BuyNoMoreThanAmountB = false 的情况
 			savingAmount := new(big.Rat)
 			// 折价汇率 y = 1-1/[math.pow(r1,r2,r3,3)]
-			// ringState.ReducedRate 是 折价汇率，为什么此时 savingAmount = FillAmountB * 折价汇率 呢？
+			// ringState.ReducedRate 是 折价汇率，为什么此时 savingAmount = (FillAmountB * 折价汇率) 呢？
 			savingAmount.Mul(filledOrder.FillAmountB, ringState.ReducedRate)
 			// reduceDrate = 1-y
 			// 连起来就是： savingAmount = FillAmountB * (1-reduceDrate)

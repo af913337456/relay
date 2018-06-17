@@ -199,7 +199,9 @@ func (s *RdsServiceImpl) MarkMinerOrders(filterOrderhashs []string, blockNumber 
 	return err
 }
 
-func (s *RdsServiceImpl) GetOrdersForMiner(protocol, tokenS, tokenB string, length int, filterStatus []types.OrderStatus, reservedTime, startBlockNumber, endBlockNumber int64) ([]*Order, error) {
+func (s *RdsServiceImpl) GetOrdersForMiner(
+	protocol, tokenS, tokenB string, length int, filterStatus []types.OrderStatus, reservedTime,
+	startBlockNumber, endBlockNumber int64) ([]*Order, error) {
 	var (
 		list []*Order
 		err  error
@@ -453,6 +455,22 @@ func (s *RdsServiceImpl) UpdateOrderWhileFill(hash common.Hash, status types.Ord
 		"split_amount_b": splitAmountB.String(),
 		"updated_block":  blockNumber.Int64(),
 	}
+	/*
+	下面是获取订单时候的 sql，可以看出 state 是以下的就不会被选中：
+	filterStatus = []types.OrderStatus{types.ORDER_FINISHED, types.ORDER_CUTOFF, types.ORDER_CANCEL}
+
+	err = s.db.Where(
+		"delegate_address = ? and token_s = ? and token_b = ?", protocol, tokenS, tokenB).
+		Where("valid_since < ?", sinceTime).
+		Where("valid_until >= ? ", untilTime).
+		Where("status not in (?) ", filterStatus).
+		Where("order_type = ? ", types.ORDER_TYPE_MARKET).
+		Where("miner_block_mark between ? and ?", startBlockNumber, endBlockNumber).
+		Order("price desc").
+		Limit(length).
+		Find(&list).
+		Error
+	*/
 	return s.db.Model(&Order{}).Where("order_hash = ?", hash.Hex()).Update(items).Error
 }
 

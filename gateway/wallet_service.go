@@ -424,6 +424,7 @@ func (w *WalletServiceImpl) UnlockWallet(owner SingleOwner) (result string, err 
 	}
 }
 
+// lgh: 由钱包进行通知服务端。传过来的订单应该不是由本服务端处理生成的
 func (w *WalletServiceImpl) NotifyTransactionSubmitted(txNotify TxNotify) (result string, err error) {
 
 	log.Info("input transaciton found > >>>>>>>>" + txNotify.Hash)
