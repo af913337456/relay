@@ -56,7 +56,6 @@ type Order struct {
 	AuthAddr              common.Address             `json:"authAddr" gencodec:"required"`        //
 	AuthPrivateKey        crypto.EthPrivateKeyCrypto `json:"authPrivateKey" gencodec:"required"`  //
 
-
 	// lgh: WalletAddress 提供订单的钱包分润地址，通常是钱包或者交易所产品研发团队的钱包地址，
 	// 用来参与订单成功撮合后的利润分成，目前方案是，
 	// 钱包会分取撮合利润的20%，撮合者(Miner)会分取撮合利润的80%。

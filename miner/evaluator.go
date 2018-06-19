@@ -106,7 +106,7 @@ func (e *Evaluator) ComputeRing(ringState *types.Ring) error {
 
 		// lgh: todo 注意！ 每个 order SPrice 和 BPrice 在 ReducedRate 里面已经设置过一次了
 		// lgh: 解决上面的 todo
-		// 原因是：由白皮书可知，SPrice 代表的是当前环路订单的实际交易汇率。为 R(origin)*(汇率折价y)<=(R(origin)=Sell/Buy)
+		// 原因是：由白皮书可知，SPrice 代表的是当前环路订单的实际交易汇率。为 R(origin)*(1-汇率折价y)<=(R(origin)=Sell/Buy)
 		filledOrder.SPrice.Mul(filledOrder.SPrice, ringState.ReducedRate)
 		// lgh: todo 为什么 BPrice != (B/S)*ReducedRate = BPrice*ReducedRate
 		// lgh: todo 下面倒置的事实是 1/[(S/B)*ReducedRate]
@@ -239,7 +239,7 @@ func (e *Evaluator) computeFeeOfRingAndOrder(ringState *types.Ring) error {
 		lrcAddress = impl.LrcTokenAddress
 		//todo:the address transfer lrcReward should be msg.sender not feeReceipt
 		if feeReceiptLrcAvailableAmount, err =
-			// lgh: 获取 e.feeReceipt 当前矿工收益地址 的 lrc 余额
+			// lgh: 去路印协议中的DelegateAddress智能合约地址获取 e.feeReceipt 当前矿工收益地址 的 lrc 余额
 			e.matcher.GetAccountAvailableAmount(e.feeReceipt, lrcAddress, impl.DelegateAddress); nil != err {
 			return err
 		}
@@ -257,9 +257,9 @@ func (e *Evaluator) computeFeeOfRingAndOrder(ringState *types.Ring) error {
 			sPrice := new(big.Rat)
 			sPrice.Quo(amountS, amountB) // 原始的汇率
 			savingAmount := new(big.Rat)
-			// 使用原始的汇率(AmountS/AmountB) 乘上 实际汇率得出的要买的数量(FillAmountB) = savingAmount
+			// 首先：savingAmount = 原始的汇率(AmountS/AmountB) 乘上 实际汇率(sPrice)得出的实际要卖的数量(FillAmountS)
 			// 因为：实际汇率是 <= 原始汇率的，所以 savingAmount >= FillAmountS
-			savingAmount.Mul(filledOrder.FillAmountB, sPrice) // 由 买的 决定 卖的
+			savingAmount.Mul(filledOrder.FillAmountB, sPrice) // 由 买的 决定 卖的。(原始卖/原始买)*实际买
 			// 再减去 根据实际汇率得出的要卖的 FillAmountS。看到这里 savingAmount 类似作差？
 			savingAmount.Sub(savingAmount, filledOrder.FillAmountS)
 			filledOrder.FeeS = savingAmount // 计算出差价

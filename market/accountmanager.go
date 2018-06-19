@@ -420,7 +420,8 @@ func (b *ChangedOfBlock) parseCacheAllowanceField(data []byte) (owner, token, sp
 	return common.BytesToAddress(data[0:20]), common.BytesToAddress(data[20:40]), common.BytesToAddress(data[40:])
 }
 
-func (b *ChangedOfBlock) saveAllowanceKey(owner, token, spender common.Address) error {
+func (b *ChangedOfBlock) saveAllowanceKey(owner, token,
+	spender common.Address) error {
 	err := rcache.SAdd(b.cacheAllowanceKey(), int64(0), b.cacheAllowanceField(owner, token, spender))
 	if err == nil {
 		eventemitter.Emit(eventemitter.BalanceUpdated, types.BalanceUpdateEvent{Owner: owner.Hex(), DelegateAddress: spender.Hex()})
@@ -700,7 +701,8 @@ func (a *AccountManager) handleTokenTransfer(input eventemitter.EventData) (err 
 	a.block.saveBalanceKey(event.Receiver, event.Protocol)
 
 	//allowance
-	if spender, err := ethaccessor.GetSpenderAddress(event.To); nil == err {
+	if spender, err := ethaccessor.GetSpenderAddress(event.To);
+	nil == err {
 		log.Debugf("handleTokenTransfer allowance owner:%s", event.Sender.Hex(), event.Protocol.Hex(), spender.Hex())
 		a.block.saveAllowanceKey(event.Sender, event.Protocol, spender)
 	}

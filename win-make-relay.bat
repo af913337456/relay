@@ -1,7 +1,7 @@
 rem go build -ldflags -s -a -v -o build/bin/relay ./cmd/lrc/*
 rem go install ./cmd/lrc/*
-rm lrc.exe
-rm relay.exe
+del lrc.exe
+del relay.exe
 cd cmd/lrc
 go build -a
 move lrc.exe ../../

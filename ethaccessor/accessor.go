@@ -204,7 +204,8 @@ func NewBlockIterator(startNumber, endNumber *big.Int, withTxData bool, confirms
 func GetSpenderAddress(protocolAddress common.Address) (spender common.Address, err error) {
 	impl, ok := accessor.ProtocolAddresses[protocolAddress]
 	if !ok {
-		return common.Address{}, errors.New("accessor method:invalid protocol address")
+		return common.Address{},
+		errors.New("accessor method:invalid protocol address")
 	}
 
 	return impl.DelegateAddress, nil
