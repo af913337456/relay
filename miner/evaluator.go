@@ -92,8 +92,8 @@ func (e *Evaluator) ComputeRing(ringState *types.Ring) error {
 		return fmt.Errorf("length of ringState.Orders must > 1 , ringhash:%s", ringState.Hash.Hex())
 	}
 
-	// lgh: 计算`汇率折价`，它是基于环路订单组计算出的。1/[(所有订单卖的乘积/所有订单买的乘积)^(1/订单数)]
-	// 矿工提交后，LPSC 会验证 `汇率折价`,其中汇率折价的范围是： 0<=y<1
+	// lgh: 计算`1-汇率折价`，它是基于环路订单组计算出的。1/[(所有订单卖的乘积/所有订单买的乘积)^(1/订单数)]
+	// 矿工提交后，LPSC 会验证 `1-汇率折价`,其中汇率折价的范围是： 0<=y<1
 	ringState.ReducedRate = ReducedRate(ringState)
 
 	//todo:get the fee for select the ring of mix income
