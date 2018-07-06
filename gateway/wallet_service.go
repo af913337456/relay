@@ -499,6 +499,7 @@ func (w *WalletServiceImpl) GetOrders(query *OrderQuery) (res PageResult, err er
 	return buildOrderResult(queryRst), err
 }
 
+// lgh: api
 func (w *WalletServiceImpl) GetOrderByHash(query OrderQuery) (order OrderJsonResult, err error) {
 	if len(query.OrderHash) == 0 {
 		return order, errors.New("order hash can't be null")

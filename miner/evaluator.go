@@ -301,8 +301,8 @@ func (e *Evaluator) computeFeeOfRingAndOrder(ringState *types.Ring) error {
 
 		// lgh: FeeS 差价总结
 		/*
-			true  => savingAmount = (amountB/amountS) * FillAmountB - FillAmountS
-			false => savingAmount = FillAmountB - (amountS/amountB) * FillAmountS
+			true  => savingAmount = (amountS/amountB) * FillAmountB - FillAmountS
+			false => savingAmount = FillAmountB - (amountB/amountS) * FillAmountS
 		*/
 
 		//compute lrcFee 需要支付的 Lrc 值

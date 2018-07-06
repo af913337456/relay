@@ -535,6 +535,7 @@ func (om *OrderManagerImpl) GetOrderBook(protocol, tokenS, tokenB common.Address
 	return list, nil
 }
 
+// lgh: 只获取 types.OrderStatus{types.ORDER_NEW, types.ORDER_PARTIAL} 的。内部做了状态的过滤
 func (om *OrderManagerImpl) GetOrders(query map[string]interface{}, statusList []types.OrderStatus, pageIndex, pageSize int) (dao.PageResult, error) {
 	var (
 		pageRes dao.PageResult
